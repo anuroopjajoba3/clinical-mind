@@ -63,10 +63,12 @@ async def create_patient(
     return resp.json()
 
 
-async def get_patient(patient_id: str) -> dict:
-    """GET /Patient/{id}"""
+async def get_patient(patient_id: str) -> Optional[dict]:
+    """GET /Patient/{id} — returns None if the patient is not found (404)."""
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.get(f"{FHIR_BASE}/Patient/{patient_id}", headers=HEADERS)
+    if resp.status_code == 404:
+        return None
     _raise_for_status(resp, "get Patient")
     return resp.json()
 

@@ -10,7 +10,7 @@ import pytest
 def test_clinical_state_has_required_keys():
     """ClinicalState TypedDict has all expected keys."""
     from agents import ClinicalState
-    required = {"question", "pico", "papers", "summaries", "contradictions",
+    required = {"question", "pico", "raw_papers", "summaries", "contradictions",
                 "report", "agent_status", "error", "fhir_patient_id", "fhir_context"}
     assert required.issubset(set(ClinicalState.__annotations__.keys()))
 

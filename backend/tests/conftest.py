@@ -7,6 +7,7 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 
 # Set test env vars before importing app modules
 os.environ.setdefault("ANTHROPIC_API_KEY", "sk-ant-test-key")
@@ -24,7 +25,7 @@ TEST_DB_URL = os.environ["DATABASE_URL"]
 
 @pytest_asyncio.fixture(scope="session")
 async def engine():
-    engine = create_async_engine(TEST_DB_URL, echo=False)
+    engine = create_async_engine(TEST_DB_URL, echo=False, poolclass=NullPool)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield engine
