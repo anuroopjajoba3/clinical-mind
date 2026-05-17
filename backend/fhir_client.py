@@ -9,7 +9,7 @@ fetch/push data between their platform and hospital EMRs.
 import os
 import json
 import httpx
-from datetime import date, datetime
+from datetime import datetime
 from typing import Optional
 
 FHIR_BASE = os.getenv("FHIR_BASE_URL", "http://localhost:8080/fhir")

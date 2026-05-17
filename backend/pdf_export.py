@@ -4,7 +4,6 @@ Generates a formatted PDF using weasyprint + inline HTML/CSS.
 """
 from __future__ import annotations
 from datetime import datetime
-from typing import Optional
 import html
 
 
@@ -126,7 +125,7 @@ def build_report_html(question: str, report: dict, summaries: list | None = None
 
 {f'<h2>💊 Key Interventions</h2>{interventions_html}' if interventions_html else ""}
 
-{f'<h2>📊 Evidence Summary</h2>' + "".join(f'<p>{_esc(p)}</p>' for p in (report.get("evidence_summary") or "").split("\n") if p) if report.get("evidence_summary") else ""}
+{'<h2>📊 Evidence Summary</h2>' + "".join(f'<p>{_esc(p)}</p>' for p in (report.get("evidence_summary") or "").split("\n") if p) if report.get("evidence_summary") else ""}
 
 {f'<h2>✅ Recommendations</h2>{recs_html}' if recs_html else ""}
 

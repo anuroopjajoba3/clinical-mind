@@ -5,8 +5,6 @@ Uses NCBI E-utilities (no API key required for basic use).
 
 import httpx
 import xml.etree.ElementTree as ET
-from typing import Optional
-import asyncio
 
 ESEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"

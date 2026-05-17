@@ -2,7 +2,7 @@
 Tests for /research, /status, /history endpoints.
 """
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch
 from httpx import AsyncClient
 
 

@@ -5,7 +5,6 @@ Returns active, recruiting, and completed trials for a given query.
 """
 
 import httpx
-from typing import Optional
 
 CT_BASE = "https://clinicaltrials.gov/api/v2/studies"
 

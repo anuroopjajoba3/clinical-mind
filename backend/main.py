@@ -6,7 +6,7 @@ Auth + SSE streaming + PostgreSQL + Redis + Celery pipeline
 import os
 import json
 import asyncio
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Optional, AsyncGenerator
 
 import redis.asyncio as aioredis
@@ -21,7 +21,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from prometheus_fastapi_instrumentator import Instrumentator
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import Counter, Histogram
 
 from database import get_db, create_tables, Job, User
 import fhir_client as fhir
@@ -244,7 +244,7 @@ async def stream_job(job_id: str):
                     # Keep-alive ping every 5s
                     timeout_counter += 1
                     if timeout_counter % 5 == 0:
-                        yield f": ping\n\n"
+                        yield ": ping\n\n"
                 await asyncio.sleep(0.5)
         finally:
             await pubsub.unsubscribe(f"job:{job_id}")

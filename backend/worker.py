@@ -16,8 +16,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # Load .env so API keys are available in forked worker processes
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
-import redis as sync_redis
-from celery import Celery
+import redis as sync_redis  # noqa: E402
+from celery import Celery  # noqa: E402
 
 REDIS_URL   = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 celery_app  = Celery("clinicalmind", broker=REDIS_URL, backend=REDIS_URL)
