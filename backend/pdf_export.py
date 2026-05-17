@@ -63,6 +63,13 @@ def build_report_html(question: str, report: dict, summaries: list | None = None
           <td>{_esc(s.get('sample_size',''))}</td>
         </tr>"""
 
+    # Pre-compute evidence summary HTML (avoids backslash-in-f-string on Python <3.12)
+    _ev_summary = report.get("evidence_summary") or ""
+    evidence_summary_html = (
+        '<h2>\U0001f4ca Evidence Summary</h2>'
+        + "".join(f'<p>{_esc(p)}</p>' for p in _ev_summary.split("\n") if p)
+    ) if _ev_summary else ""
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -125,7 +132,7 @@ def build_report_html(question: str, report: dict, summaries: list | None = None
 
 {f'<h2>💊 Key Interventions</h2>{interventions_html}' if interventions_html else ""}
 
-{'<h2>📊 Evidence Summary</h2>' + "".join(f'<p>{_esc(p)}</p>' for p in (report.get("evidence_summary") or "").split("\n") if p) if report.get("evidence_summary") else ""}
+{evidence_summary_html}
 
 {f'<h2>✅ Recommendations</h2>{recs_html}' if recs_html else ""}
 
