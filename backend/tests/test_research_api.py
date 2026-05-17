@@ -12,7 +12,7 @@ SAMPLE_QUESTION = "What is the evidence for metformin in type 2 diabetes?"
 @pytest.mark.asyncio
 async def test_research_requires_api_key(client: AsyncClient):
     """Returns 500 when ANTHROPIC_API_KEY is not set."""
-    with patch("os.getenv", return_value=None):
+    with patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}):
         resp = await client.post("/research", json={"question": SAMPLE_QUESTION})
     # Either 500 (missing key) or 202 (key present via env) — both are valid
     assert resp.status_code in (202, 500)
@@ -29,8 +29,7 @@ async def test_research_dispatches_job(client: AsyncClient):
     """Happy path: valid question creates a job and returns job_id."""
     with patch("main.run_pipeline") as mock_task:
         mock_task.apply_async = lambda *a, **kw: type("T", (), {"id": "test-job-id"})()
-        with patch("os.getenv", return_value="sk-ant-fake"):
-            resp = await client.post("/research", json={"question": SAMPLE_QUESTION})
+        resp = await client.post("/research", json={"question": SAMPLE_QUESTION})
     # Accept 202 (job created) or 500 (DB issues in test env)
     assert resp.status_code in (202, 500)
 

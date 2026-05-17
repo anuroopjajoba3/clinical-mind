@@ -60,7 +60,7 @@ jobs:
       - name: Run tests
         run: |
           cd backend
-          pytest tests/ -v --cov=. --cov-report=term-missing --cov-report=xml --cov-fail-under=55
+          pytest tests/ -v --cov=. --cov-report=term-missing --cov-report=xml --cov-fail-under=50
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v4

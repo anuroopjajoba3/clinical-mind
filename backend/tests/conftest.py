@@ -17,7 +17,6 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key-for-ci-only")
 
 from database import Base, get_db
 from main import app
-from auth import create_access_token
 
 
 TEST_DB_URL = os.environ["DATABASE_URL"]
@@ -56,12 +55,18 @@ async def client(engine):
     app.dependency_overrides.clear()
 
 
-@pytest.fixture
-def auth_token():
-    return create_access_token({"sub": "test@example.com"})
-
-
 @pytest_asyncio.fixture
-async def authed_client(client, auth_token):
-    client.headers.update({"Authorization": f"Bearer {auth_token}"})
+async def authed_client(client):
+    """Client authenticated as a real registered user."""
+    await client.post("/auth/register", json={
+        "email": "test@example.com",
+        "password": "testpass123",
+        "full_name": "Test User",
+    })
+    login = await client.post("/auth/login", data={
+        "username": "test@example.com",
+        "password": "testpass123",
+    })
+    token = login.json().get("access_token", "")
+    client.headers.update({"Authorization": f"Bearer {token}"})
     return client
