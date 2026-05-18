@@ -4,7 +4,6 @@ Auth + SSE streaming + PostgreSQL + Redis + Celery pipeline
 """
 
 import os
-import ssl
 import json
 import asyncio
 from datetime import timedelta

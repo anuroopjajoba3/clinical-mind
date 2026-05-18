@@ -4,7 +4,6 @@ Publishes real-time status updates to Redis pub/sub channel job:{job_id}.
 """
 
 import os
-import ssl
 import sys
 import json
 import asyncio
