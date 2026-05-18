@@ -55,8 +55,8 @@ def run_pipeline(self, job_id: str, question: str, fhir_patient_id: str = None):
     from database import AsyncSessionLocal, Job
     from sqlalchemy import select
 
-    _ssl_reqs = "none" if REDIS_URL.startswith("rediss://") else None
-    r = sync_redis.from_url(REDIS_URL, decode_responses=True, ssl_cert_reqs=_ssl_reqs)
+    _ssl = {"ssl_cert_reqs": "none"} if REDIS_URL.startswith("rediss://") else {}
+    r = sync_redis.from_url(REDIS_URL, decode_responses=True, **_ssl)
 
     initial_state: ClinicalState = {
         "question": question,

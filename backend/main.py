@@ -214,8 +214,8 @@ async def stream_job(job_id: str):
     Uses polling instead of pub/sub for compatibility with managed Redis (Upstash).
     """
     async def event_generator() -> AsyncGenerator[str, None]:
-        _ssl_reqs = "none" if REDIS_URL.startswith("rediss://") else None
-        r = aioredis.from_url(REDIS_URL, decode_responses=True, ssl_cert_reqs=_ssl_reqs)
+        _ssl = {"ssl_cert_reqs": "none"} if REDIS_URL.startswith("rediss://") else {}
+        r = aioredis.from_url(REDIS_URL, decode_responses=True, **_ssl)
 
         last_data = None
         ticks = 0  # counts 0.5s intervals
@@ -253,8 +253,8 @@ async def stream_job(job_id: str):
 async def get_status(job_id: str, db: AsyncSession = Depends(get_db)):
     """Fallback polling endpoint (also checks Redis cache for speed)."""
     # Try Redis first (fast)
-    _ssl_reqs = "none" if REDIS_URL.startswith("rediss://") else None
-    r = aioredis.from_url(REDIS_URL, decode_responses=True, ssl_cert_reqs=_ssl_reqs)
+    _ssl = {"ssl_cert_reqs": "none"} if REDIS_URL.startswith("rediss://") else {}
+    r = aioredis.from_url(REDIS_URL, decode_responses=True, **_ssl)
     cached = await r.get(f"job:{job_id}:latest")
     await r.aclose()
     if cached:
