@@ -1,14 +1,33 @@
 import axios from 'axios'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// Resolved lazily — fetches from /api/config on first use so the tunnel URL
+// can change without a Vercel redeploy
+let _apiBase = null
+
+async function getApiBase() {
+  if (_apiBase) return _apiBase
+  try {
+    const res = await fetch('/api/config')
+    const { apiUrl } = await res.json()
+    _apiBase = apiUrl
+  } catch {
+    _apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+  }
+  return _apiBase
+}
+
+// For SSE which needs the URL synchronously — resolved after first API call
+export function getCurrentApiBase() {
+  return _apiBase || import.meta.env.VITE_API_URL || 'http://localhost:8000'
+}
 
 const api = axios.create({
-  baseURL: API_BASE,
   headers: { 'ngrok-skip-browser-warning': 'true' },
 })
 
-// Attach JWT token to every request
-api.interceptors.request.use((config) => {
+// Resolve baseURL before every request
+api.interceptors.request.use(async (config) => {
+  config.baseURL = await getApiBase()
   const token = sessionStorage.getItem('cm_token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
@@ -32,9 +51,10 @@ export const researchAPI = {
 }
 
 // SSE stream factory
-export function createJobStream(job_id, onData, onError) {
+export async function createJobStream(job_id, onData, onError) {
+  const base  = await getApiBase()
   const token = sessionStorage.getItem('cm_token')
-  const url   = `${API_BASE}/stream/${job_id}${token ? `?token=${token}` : ''}`
+  const url   = `${base}/stream/${job_id}${token ? `?token=${token}` : ''}`
   const es    = new EventSource(url)
 
   es.onmessage = (e) => {
