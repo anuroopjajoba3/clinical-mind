@@ -4,6 +4,7 @@ Auth + SSE streaming + PostgreSQL + Redis + Celery pipeline
 """
 
 import os
+import ssl
 import json
 import asyncio
 from datetime import timedelta
@@ -210,44 +211,32 @@ async def start_research(
 async def stream_job(job_id: str):
     """
     Server-Sent Events endpoint.
-    Subscribes to Redis pub/sub channel job:{job_id} and streams status events.
+    Polls Redis for job state updates and streams them to the client.
+    Uses polling instead of pub/sub for compatibility with managed Redis (Upstash).
     """
     async def event_generator() -> AsyncGenerator[str, None]:
-        r = aioredis.from_url(REDIS_URL, decode_responses=True)
-        pubsub = r.pubsub()
-        await pubsub.subscribe(f"job:{job_id}")
+        _ssl_reqs = "none" if REDIS_URL.startswith("rediss://") else None
+        r = aioredis.from_url(REDIS_URL, decode_responses=True, ssl_cert_reqs=_ssl_reqs)
 
-        # Send any cached latest state immediately on connect
-        latest = await r.get(f"job:{job_id}:latest")
-        if latest:
-            yield f"data: {latest}\n\n"
-            data = json.loads(latest)
-            if data.get("status") in ("complete", "error"):
-                await pubsub.unsubscribe(f"job:{job_id}")
-                await r.aclose()
-                return
+        last_data = None
+        ticks = 0  # counts 0.5s intervals
 
         try:
-            timeout_counter = 0
-            while timeout_counter < 120:  # 2 min max
-                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
-                if message and message.get("data"):
-                    raw = message["data"]
-                    yield f"data: {raw}\n\n"
+            while ticks < 480:  # 4 min max
+                cached = await r.get(f"job:{job_id}:latest")
+                if cached and cached != last_data:
+                    last_data = cached
+                    yield f"data: {cached}\n\n"
                     try:
-                        parsed = json.loads(raw)
-                        if parsed.get("status") in ("complete", "error"):
+                        if json.loads(cached).get("status") in ("complete", "error"):
                             break
                     except json.JSONDecodeError:
                         pass
-                else:
-                    # Keep-alive ping every 5s
-                    timeout_counter += 1
-                    if timeout_counter % 5 == 0:
-                        yield ": ping\n\n"
+                elif ticks % 20 == 0:  # keepalive ping every ~10s
+                    yield ": ping\n\n"
+                ticks += 1
                 await asyncio.sleep(0.5)
         finally:
-            await pubsub.unsubscribe(f"job:{job_id}")
             await r.aclose()
 
     return StreamingResponse(
@@ -265,7 +254,8 @@ async def stream_job(job_id: str):
 async def get_status(job_id: str, db: AsyncSession = Depends(get_db)):
     """Fallback polling endpoint (also checks Redis cache for speed)."""
     # Try Redis first (fast)
-    r = aioredis.from_url(REDIS_URL, decode_responses=True)
+    _ssl_reqs = "none" if REDIS_URL.startswith("rediss://") else None
+    r = aioredis.from_url(REDIS_URL, decode_responses=True, ssl_cert_reqs=_ssl_reqs)
     cached = await r.get(f"job:{job_id}:latest")
     await r.aclose()
     if cached:

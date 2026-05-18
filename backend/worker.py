@@ -4,6 +4,7 @@ Publishes real-time status updates to Redis pub/sub channel job:{job_id}.
 """
 
 import os
+import ssl
 import sys
 import json
 import asyncio
@@ -22,6 +23,7 @@ from celery import Celery  # noqa: E402
 REDIS_URL   = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 celery_app  = Celery("clinicalmind", broker=REDIS_URL, backend=REDIS_URL)
 
+_ssl_opts = {"ssl_cert_reqs": "none"} if REDIS_URL.startswith("rediss://") else {}
 celery_app.conf.update(
     task_serializer="json",
     result_serializer="json",
@@ -31,6 +33,8 @@ celery_app.conf.update(
     task_track_started=True,
     task_acks_late=True,
     worker_prefetch_multiplier=1,
+    broker_use_ssl=_ssl_opts or None,
+    redis_backend_use_ssl=_ssl_opts or None,
 )
 
 
@@ -52,7 +56,8 @@ def run_pipeline(self, job_id: str, question: str, fhir_patient_id: str = None):
     from database import AsyncSessionLocal, Job
     from sqlalchemy import select
 
-    r = sync_redis.from_url(REDIS_URL, decode_responses=True)
+    _ssl_reqs = "none" if REDIS_URL.startswith("rediss://") else None
+    r = sync_redis.from_url(REDIS_URL, decode_responses=True, ssl_cert_reqs=_ssl_reqs)
 
     initial_state: ClinicalState = {
         "question": question,
