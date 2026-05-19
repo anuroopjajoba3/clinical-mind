@@ -55,12 +55,26 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+_origins = [
+    o.strip()
+    for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
+    if o.strip()
+]
+# Ensure all local dev variants are included regardless of .env
+for _dev in (
+    "http://localhost:5173", "http://localhost:3000",
+    "http://127.0.0.1:5173", "http://127.0.0.1:3000",
+):
+    if _dev not in _origins:
+        _origins.append(_dev)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000").split(","),
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
 )
 
 # Auto-instrument all routes (request count, latency, status codes)
@@ -363,7 +377,7 @@ class FhirWriteReport(BaseModel):
 @app.get("/fhir/health")
 async def fhir_health():
     healthy = await fhir.fhir_server_healthy()
-    return {"fhir_server": "up" if healthy else "down", "base_url": fhir.FHIR_BASE}
+    return {"fhir_server": "up" if healthy else "down", "base_url": fhir._fhir_base()}
 
 
 # ── Patients ──────────────────────────────────────────────────────────────────
@@ -591,10 +605,29 @@ async def app_manifest():
 # PATIENT MEMORY ENDPOINTS
 # ════════════════════════════════════════════════════════════════════════════
 
+@app.delete("/patients/purge-invalid")
+async def purge_invalid_patients(db: AsyncSession = Depends(get_db)):
+    """Delete any patient rows that have no MRN (junk from bad sync runs)."""
+    from sqlalchemy import delete as sql_delete
+    from database import Patient as PatientModel, PatientEntity as PatientEntityModel
+    result = await db.execute(
+        select(PatientModel).where(
+            (PatientModel.mrn == None) | (PatientModel.mrn == "")
+        )
+    )
+    bad = result.scalars().all()
+    for p in bad:
+        await db.execute(sql_delete(PatientEntityModel).where(PatientEntityModel.patient_id == p.id))
+        await db.delete(p)
+    await db.commit()
+    return {"deleted": len(bad)}
+
+
 @app.get("/patients")
 async def list_patients(db: AsyncSession = Depends(get_db)):
     """List all synced patients with compact summaries for the patient selection screen."""
-    return await memory.list_patients(db)
+    patients = await memory.list_patients(db)
+    return {"patients": patients, "total": len(patients)}
 
 
 @app.get("/patients/{fhir_id}")
@@ -629,20 +662,22 @@ async def sync_patient(fhir_id: str, db: AsyncSession = Depends(get_db)):
 @app.post("/patients/sync-all")
 async def sync_all_patients(db: AsyncSession = Depends(get_db)):
     """
-    Search FHIR server for all patients and sync them.
-    Useful after running seed_patients.py.
+    Sync all seeded patients by searching FHIR by each MRN-001..MRN-010 identifier.
+    This avoids pulling random patients from the shared public HAPI server.
     """
-    fhir_patients = await fhir.search_patients()
     results = []
-    for fp in fhir_patients:
-        fhir_id = fp.get("id")
-        if not fhir_id:
-            continue
+    for i in range(1, 11):
+        mrn = f"MRN-{i:03d}"
         try:
+            matches = await fhir.search_patients(mrn=mrn)
+            if not matches:
+                results.append({"mrn": mrn, "status": "not_found"})
+                continue
+            fhir_id = matches[0].get("id")
             p = await memory.sync_patient(fhir_id, db)
-            results.append({"fhir_id": fhir_id, "name": p.full_name, "status": "ok"})
+            results.append({"fhir_id": fhir_id, "name": p.full_name, "mrn": mrn, "status": "ok"})
         except Exception as e:
-            results.append({"fhir_id": fhir_id, "status": "error", "detail": str(e)})
+            results.append({"mrn": mrn, "status": "error", "detail": str(e)})
     return {"synced": len([r for r in results if r["status"] == "ok"]), "results": results}
 
 

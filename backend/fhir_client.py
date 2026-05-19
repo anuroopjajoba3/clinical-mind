@@ -12,6 +12,10 @@ import httpx
 from datetime import datetime
 from typing import Optional
 
+def _fhir_base() -> str:
+    return os.getenv("FHIR_BASE_URL", "http://localhost:8080/fhir")
+
+# Module-level alias kept for backward compat (fhir.FHIR_BASE used in health endpoint)
 FHIR_BASE = os.getenv("FHIR_BASE_URL", "http://localhost:8080/fhir")
 
 HEADERS = {
@@ -58,7 +62,7 @@ async def create_patient(
         "birthDate": birth_date,
     }
     async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.post(f"{FHIR_BASE}/Patient", json=resource, headers=HEADERS)
+        resp = await client.post(f"{_fhir_base()}/Patient", json=resource, headers=HEADERS)
     _raise_for_status(resp, "create Patient")
     return resp.json()
 
@@ -66,7 +70,7 @@ async def create_patient(
 async def get_patient(patient_id: str) -> Optional[dict]:
     """GET /Patient/{id} — returns None if the patient is not found (404)."""
     async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.get(f"{FHIR_BASE}/Patient/{patient_id}", headers=HEADERS)
+        resp = await client.get(f"{_fhir_base()}/Patient/{patient_id}", headers=HEADERS)
     if resp.status_code == 404:
         return None
     _raise_for_status(resp, "get Patient")
@@ -86,7 +90,7 @@ async def search_patients(family: str = "", given: str = "", mrn: str = "") -> l
     if mrn:
         params["identifier"] = mrn
     async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.get(f"{FHIR_BASE}/Patient", params=params, headers=HEADERS)
+        resp = await client.get(f"{_fhir_base()}/Patient", params=params, headers=HEADERS)
     _raise_for_status(resp, "search Patient")
     bundle = resp.json()
     return [entry["resource"] for entry in bundle.get("entry", [])]
@@ -133,7 +137,7 @@ async def create_encounter(
         ],
     }
     async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.post(f"{FHIR_BASE}/Encounter", json=resource, headers=HEADERS)
+        resp = await client.post(f"{_fhir_base()}/Encounter", json=resource, headers=HEADERS)
     _raise_for_status(resp, "create Encounter")
     return resp.json()
 
@@ -142,7 +146,7 @@ async def get_encounters_for_patient(patient_id: str) -> list[dict]:
     """GET /Encounter?subject=Patient/{id} — fetch all encounters for a patient."""
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.get(
-            f"{FHIR_BASE}/Encounter",
+            f"{_fhir_base()}/Encounter",
             params={"subject": f"Patient/{patient_id}", "_sort": "-date", "_count": "20"},
             headers=HEADERS,
         )
@@ -190,7 +194,7 @@ async def create_appointment(
         ],
     }
     async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.post(f"{FHIR_BASE}/Appointment", json=resource, headers=HEADERS)
+        resp = await client.post(f"{_fhir_base()}/Appointment", json=resource, headers=HEADERS)
     _raise_for_status(resp, "create Appointment")
     return resp.json()
 
@@ -199,7 +203,7 @@ async def get_appointments_for_patient(patient_id: str) -> list[dict]:
     """GET /Appointment?actor=Patient/{id}"""
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.get(
-            f"{FHIR_BASE}/Appointment",
+            f"{_fhir_base()}/Appointment",
             params={"actor": f"Patient/{patient_id}", "_sort": "-date", "_count": "20"},
             headers=HEADERS,
         )
@@ -262,7 +266,7 @@ async def write_clinical_report(
     }
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(
-            f"{FHIR_BASE}/DocumentReference", json=resource, headers=HEADERS
+            f"{_fhir_base()}/DocumentReference", json=resource, headers=HEADERS
         )
     _raise_for_status(resp, "write DocumentReference")
     return resp.json()
@@ -276,7 +280,7 @@ async def get_conditions(patient_id: str) -> list[dict]:
     """GET /Condition?patient={id} — active and resolved conditions."""
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.get(
-            f"{FHIR_BASE}/Condition",
+            f"{_fhir_base()}/Condition",
             params={"patient": patient_id, "_sort": "-onset-date", "_count": "50"},
             headers=HEADERS,
         )
@@ -293,7 +297,7 @@ async def get_medications(patient_id: str) -> list[dict]:
     """GET /MedicationRequest?patient={id} — current and historical medications."""
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.get(
-            f"{FHIR_BASE}/MedicationRequest",
+            f"{_fhir_base()}/MedicationRequest",
             params={"patient": patient_id, "_sort": "-authoredon", "_count": "50"},
             headers=HEADERS,
         )
@@ -310,7 +314,7 @@ async def get_observations(patient_id: str, category: str = "laboratory") -> lis
     """GET /Observation?patient={id}&category={category} — labs or vitals."""
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.get(
-            f"{FHIR_BASE}/Observation",
+            f"{_fhir_base()}/Observation",
             params={"patient": patient_id, "category": category,
                     "_sort": "-date", "_count": "50"},
             headers=HEADERS,
@@ -328,7 +332,7 @@ async def get_allergies(patient_id: str) -> list[dict]:
     """GET /AllergyIntolerance?patient={id}"""
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.get(
-            f"{FHIR_BASE}/AllergyIntolerance",
+            f"{_fhir_base()}/AllergyIntolerance",
             params={"patient": patient_id, "_count": "50"},
             headers=HEADERS,
         )
@@ -345,7 +349,7 @@ async def fhir_server_healthy() -> bool:
     """Check FHIR server is up by hitting its capability statement."""
     try:
         async with httpx.AsyncClient(timeout=5) as client:
-            resp = await client.get(f"{FHIR_BASE}/metadata", headers=HEADERS)
+            resp = await client.get(f"{_fhir_base()}/metadata", headers=HEADERS)
         return resp.status_code == 200
     except Exception:
         return False

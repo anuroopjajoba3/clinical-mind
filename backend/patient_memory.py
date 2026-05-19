@@ -8,6 +8,7 @@ This is the persistence layer behind the Patient Memory Graph.
 import uuid
 from datetime import datetime
 from sqlalchemy import select, delete
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import fhir_client as fhir
@@ -202,7 +203,9 @@ async def get_patient_summary(fhir_patient_id: str, db: AsyncSession) -> dict | 
     Used by the API and by the LangGraph FHIR agent for context injection.
     """
     result = await db.execute(
-        select(Patient).where(Patient.fhir_id == fhir_patient_id)
+        select(Patient)
+        .where(Patient.fhir_id == fhir_patient_id)
+        .options(selectinload(Patient.entities))
     )
     patient = result.scalar_one_or_none()
     if not patient:
@@ -238,7 +241,9 @@ async def list_patients(db: AsyncSession) -> list[dict]:
     """
     Returns all synced patients with a compact summary (for the patient list screen).
     """
-    result = await db.execute(select(Patient))
+    result = await db.execute(
+        select(Patient).options(selectinload(Patient.entities))
+    )
     patients = result.scalars().all()
 
     summaries = []

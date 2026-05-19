@@ -10,7 +10,7 @@ import EvidenceCard    from './components/EvidenceCard'
 import ReportPanel     from './components/ReportPanel'
 import AuthModal       from './components/AuthModal'
 import SearchHistory   from './components/SearchHistory'
-import FhirPatient     from './components/FhirPatient'
+import PatientSelector from './components/PatientSelector'
 import { AnatomyBackground } from './components/AnatomyBackground'
 
 // ── constants ────────────────────────────────────────────────────
@@ -314,13 +314,13 @@ export default function App() {
                 </div>
               </motion.form>
 
-              {/* FHIR Patient Context */}
+              {/* Patient selector */}
               <motion.div
                 className="max-w-3xl mx-auto mb-8"
                 initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.55 }}
               >
-                <FhirPatient onPatientSelected={setFhirPatientId} />
+                <PatientSelector onPatientSelected={setFhirPatientId} />
               </motion.div>
 
               {/* Example questions */}

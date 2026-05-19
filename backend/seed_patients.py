@@ -40,7 +40,7 @@ PATIENTS = [
             ("33914-3", "eGFR",                   "42 mL/min","2024-11-01"),
             ("2093-3",  "Total Cholesterol",       "198 mg/dL","2024-10-15"),
         ],
-        "allergies": [("372687004", "Penicillin", "severe")],
+        "allergies": [("372687004", "Penicillin", "high")],
     },
     {
         "family": "Williams", "given": "Robert", "birth_date": "1965-08-22",
@@ -62,7 +62,7 @@ PATIENTS = [
             ("2160-0",  "Creatinine",           "1.2 mg/dL", "2024-10-20"),
             ("6301-6",  "INR",                  "2.3",        "2024-11-05"),
         ],
-        "allergies": [("372840004", "Aspirin", "moderate")],
+        "allergies": [("372840004", "Aspirin", "unable-to-assess")],
     },
     {
         "family": "Chen", "given": "Linda", "birth_date": "1982-11-30",
@@ -101,7 +101,7 @@ PATIENTS = [
             ("4548-4",  "HbA1c",          "8.1 %",      "2024-10-01"),
             ("38483-4", "Bone Density",   "-2.8 T-score","2024-08-20"),
         ],
-        "allergies": [("387207008", "Ibuprofen", "mild")],
+        "allergies": [("387207008", "Ibuprofen", "low")],
     },
     {
         "family": "Martinez", "given": "Sofia", "birth_date": "1978-02-19",
@@ -121,7 +121,7 @@ PATIENTS = [
             ("14647-2", "CRP",        "12.3 mg/L", "2024-10-10"),
             ("5902-2",  "RF",         "142 IU/mL", "2024-10-10"),
         ],
-        "allergies": [("372687004", "Sulfonamides", "severe")],
+        "allergies": [("372687004", "Sulfonamides", "high")],
     },
     {
         "family": "Thompson", "given": "James", "birth_date": "1971-09-03",
@@ -160,7 +160,7 @@ PATIENTS = [
             ("85319-2", "CA 15-3",         "28 U/mL",   "2024-10-15"),
             ("3024-7",  "Thyroid TSH",     "3.2 mIU/L", "2024-10-15"),
         ],
-        "allergies": [("255641001", "Codeine", "severe")],
+        "allergies": [("255641001", "Codeine", "high")],
     },
     {
         "family": "Brown", "given": "Michael", "birth_date": "1988-06-14",
@@ -201,7 +201,7 @@ PATIENTS = [
             ("33914-3", "eGFR",       "22 mL/min", "2024-10-20"),
             ("6301-6",  "INR",        "2.1",        "2024-11-01"),
         ],
-        "allergies": [("372687004", "Penicillin", "severe"), ("387207008", "NSAIDs", "moderate")],
+        "allergies": [("372687004", "Penicillin", "high"), ("387207008", "NSAIDs", "unable-to-assess")],
     },
     {
         "family": "Lee", "given": "David", "birth_date": "1975-07-08",
@@ -222,7 +222,7 @@ PATIENTS = [
             ("2132-9",  "Vitamin B12",    "148 pg/mL",     "2024-11-01"),
             ("14647-2", "CRP",            "18.4 mg/L",     "2024-11-01"),
         ],
-        "allergies": [("372840004", "Mesalamine", "moderate")],
+        "allergies": [("372840004", "Mesalamine", "unable-to-assess")],
     },
 ]
 
@@ -233,22 +233,60 @@ async def post_fhir(client: httpx.AsyncClient, path: str, body: dict) -> dict:
     return resp.json()
 
 
+async def upsert_patient(client: httpx.AsyncClient, p: dict) -> str:
+    """
+    Search by MRN first. If duplicates exist, delete extras and PUT to the
+    surviving ID. If none exist, POST to create. Returns the FHIR patient id.
+    """
+    mrn = p["mrn"]
+    resource = {
+        "resourceType": "Patient",
+        "identifier": [{"use": "official", "value": mrn}],
+        "name": [{"use": "official", "family": p["family"], "given": [p["given"]]}],
+        "gender": p["gender"],
+        "birthDate": p["birth_date"],
+    }
+
+    # Search for existing patients with this MRN
+    search_resp = await client.get(
+        f"{FHIR_BASE}/Patient",
+        params={"identifier": mrn, "_elements": "id"},
+        headers=HEADERS,
+        timeout=20,
+    )
+    search_resp.raise_for_status()
+    entries = search_resp.json().get("entry", [])
+    ids = [e["resource"]["id"] for e in entries if "resource" in e]
+
+    if ids:
+        # Delete all duplicates except the first
+        for extra_id in ids[1:]:
+            await client.delete(f"{FHIR_BASE}/Patient/{extra_id}", headers=HEADERS, timeout=20)
+        # Update the surviving one directly by ID
+        resource["id"] = ids[0]
+        put_resp = await client.put(
+            f"{FHIR_BASE}/Patient/{ids[0]}",
+            json=resource,
+            headers=HEADERS,
+            timeout=20,
+        )
+        put_resp.raise_for_status()
+        return ids[0]
+    else:
+        # No existing patient — create fresh
+        post_resp = await client.post(f"{FHIR_BASE}/Patient", json=resource, headers=HEADERS, timeout=20)
+        post_resp.raise_for_status()
+        return post_resp.json()["id"]
+
+
 async def seed():
     print(f"Seeding patients to FHIR server: {FHIR_BASE}\n")
 
     async with httpx.AsyncClient() as client:
         for p in PATIENTS:
-            print(f"Creating {p['given']} {p['family']}...", end=" ")
+            print(f"Upserting {p['given']} {p['family']}...", end=" ")
 
-            patient_resource = {
-                "resourceType": "Patient",
-                "identifier": [{"use": "official", "value": p["mrn"]}],
-                "name": [{"use": "official", "family": p["family"], "given": [p["given"]]}],
-                "gender": p["gender"],
-                "birthDate": p["birth_date"],
-            }
-            created = await post_fhir(client, "Patient", patient_resource)
-            pid = created["id"]
+            pid = await upsert_patient(client, p)
 
             for code, display, status in p["conditions"]:
                 await post_fhir(client, "Condition", {
@@ -285,7 +323,12 @@ async def seed():
             for acode, display, criticality in p["allergies"]:
                 await post_fhir(client, "AllergyIntolerance", {
                     "resourceType": "AllergyIntolerance",
-                    "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical", "code": "active"}]},
+                    "clinicalStatus": {
+                        "coding": [{"system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical", "code": "active"}]
+                    },
+                    "verificationStatus": {
+                        "coding": [{"system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification", "code": "confirmed"}]
+                    },
                     "criticality": criticality,
                     "code": {"coding": [{"system": "http://snomed.info/sct", "code": acode, "display": display}], "text": display},
                     "patient": {"reference": f"Patient/{pid}"},
