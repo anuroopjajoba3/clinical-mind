@@ -1,6 +1,6 @@
 """
 Async SQLAlchemy database layer.
-Models: User, Job
+Models: User, Job, Patient, PatientEntity
 """
 
 import os
@@ -41,23 +41,68 @@ class User(Base):
 class Job(Base):
     __tablename__ = "jobs"
 
-    id           = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id      = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    question     = Column(Text, nullable=False)
-    status       = Column(String(20), default="pending")   # pending|running|complete|error
-    agent_status = Column(JSON, default=lambda: {
+    id             = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id        = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    fhir_patient_id = Column(String(255), nullable=True, index=True)
+    question       = Column(Text, nullable=False)
+    status         = Column(String(20), default="pending")
+    agent_status   = Column(JSON, default=lambda: {
         "pico": "idle", "search": "idle",
         "summarizer": "idle", "contradiction": "idle", "synthesize": "idle"
     })
-    pico         = Column(JSON, nullable=True)
-    summaries    = Column(JSON, nullable=True)
+    pico           = Column(JSON, nullable=True)
+    summaries      = Column(JSON, nullable=True)
     contradictions = Column(JSON, nullable=True)
-    report       = Column(JSON, nullable=True)
-    error        = Column(Text, nullable=True)
-    created_at   = Column(DateTime, default=datetime.utcnow)
-    completed_at = Column(DateTime, nullable=True)
+    report         = Column(JSON, nullable=True)
+    error          = Column(Text, nullable=True)
+    created_at     = Column(DateTime, default=datetime.utcnow)
+    completed_at   = Column(DateTime, nullable=True)
 
     user = relationship("User", back_populates="jobs")
+
+
+class Patient(Base):
+    """
+    Local cache of FHIR Patient resources.
+    Synced from the FHIR server; acts as the anchor for PatientEntity records.
+    """
+    __tablename__ = "patients"
+
+    id          = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    fhir_id     = Column(String(255), unique=True, nullable=False, index=True)
+    full_name   = Column(String(255), nullable=True)
+    birth_date  = Column(String(20), nullable=True)
+    gender      = Column(String(20), nullable=True)
+    mrn         = Column(String(100), nullable=True)
+    synced_at   = Column(DateTime, default=datetime.utcnow)
+
+    entities = relationship(
+        "PatientEntity", back_populates="patient",
+        cascade="all, delete-orphan",
+        order_by="PatientEntity.onset_date",
+    )
+
+
+class PatientEntity(Base):
+    """
+    Structured clinical entities extracted from FHIR resources.
+    entity_type: condition | medication | lab | allergy | procedure | encounter
+    """
+    __tablename__ = "patient_entities"
+
+    id          = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id  = Column(UUID(as_uuid=True), ForeignKey("patients.id"), nullable=False, index=True)
+    fhir_id     = Column(String(255), nullable=True)   # original FHIR resource id
+    entity_type = Column(String(30), nullable=False)   # condition|medication|lab|allergy|procedure|encounter
+    code        = Column(String(100), nullable=True)   # SNOMED / LOINC / RxNorm code
+    display     = Column(String(512), nullable=False)  # human-readable name
+    status      = Column(String(50), nullable=True)    # active|resolved|completed|stopped
+    onset_date  = Column(String(30), nullable=True)    # ISO date string
+    value       = Column(String(255), nullable=True)   # lab value + unit, e.g. "7.2 mmol/L"
+    extra       = Column(JSON, nullable=True)          # any additional FHIR fields
+    created_at  = Column(DateTime, default=datetime.utcnow)
+
+    patient = relationship("Patient", back_populates="entities")
 
 
 # ─── Engine + Session ─────────────────────────────────────────────────────────

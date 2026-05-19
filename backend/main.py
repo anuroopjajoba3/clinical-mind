@@ -23,8 +23,9 @@ from slowapi.errors import RateLimitExceeded
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Counter, Histogram
 
-from database import get_db, create_tables, Job, User
+from database import get_db, create_tables, Job, User, Patient
 import fhir_client as fhir
+import patient_memory as memory
 from auth import (
     get_current_user, get_optional_user,
     get_user_by_email, create_user, authenticate_user,
@@ -584,6 +585,65 @@ async def app_manifest():
         "response_types": ["code"],
         "fhirVersions": ["4.0.1"],
     }
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# PATIENT MEMORY ENDPOINTS
+# ════════════════════════════════════════════════════════════════════════════
+
+@app.get("/patients")
+async def list_patients(db: AsyncSession = Depends(get_db)):
+    """List all synced patients with compact summaries for the patient selection screen."""
+    return await memory.list_patients(db)
+
+
+@app.get("/patients/{fhir_id}")
+async def get_patient_memory(fhir_id: str, db: AsyncSession = Depends(get_db)):
+    """Full patient memory — conditions, medications, labs, allergies, encounters."""
+    summary = await memory.get_patient_summary(fhir_id, db)
+    if not summary:
+        raise HTTPException(status_code=404, detail="Patient not found. Try syncing first.")
+    return summary
+
+
+@app.post("/patients/{fhir_id}/sync")
+async def sync_patient(fhir_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Pull latest FHIR data for a patient and update local memory.
+    Call this after seeding patients or when FHIR data changes.
+    """
+    try:
+        patient = await memory.sync_patient(fhir_id, db)
+        return {
+            "status": "synced",
+            "fhir_id": fhir_id,
+            "full_name": patient.full_name,
+            "synced_at": patient.synced_at.isoformat(),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Sync failed: {e}")
+
+
+@app.post("/patients/sync-all")
+async def sync_all_patients(db: AsyncSession = Depends(get_db)):
+    """
+    Search FHIR server for all patients and sync them.
+    Useful after running seed_patients.py.
+    """
+    fhir_patients = await fhir.search_patients()
+    results = []
+    for fp in fhir_patients:
+        fhir_id = fp.get("id")
+        if not fhir_id:
+            continue
+        try:
+            p = await memory.sync_patient(fhir_id, db)
+            results.append({"fhir_id": fhir_id, "name": p.full_name, "status": "ok"})
+        except Exception as e:
+            results.append({"fhir_id": fhir_id, "status": "error", "detail": str(e)})
+    return {"synced": len([r for r in results if r["status"] == "ok"]), "results": results}
 
 
 if __name__ == "__main__":

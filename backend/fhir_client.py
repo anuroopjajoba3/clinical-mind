@@ -269,6 +269,75 @@ async def write_clinical_report(
 
 
 # ════════════════════════════════════════════════════════════════════════════
+# CONDITIONS
+# ════════════════════════════════════════════════════════════════════════════
+
+async def get_conditions(patient_id: str) -> list[dict]:
+    """GET /Condition?patient={id} — active and resolved conditions."""
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(
+            f"{FHIR_BASE}/Condition",
+            params={"patient": patient_id, "_sort": "-onset-date", "_count": "50"},
+            headers=HEADERS,
+        )
+    if resp.status_code >= 400:
+        return []
+    return [e["resource"] for e in resp.json().get("entry", [])]
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# MEDICATIONS
+# ════════════════════════════════════════════════════════════════════════════
+
+async def get_medications(patient_id: str) -> list[dict]:
+    """GET /MedicationRequest?patient={id} — current and historical medications."""
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(
+            f"{FHIR_BASE}/MedicationRequest",
+            params={"patient": patient_id, "_sort": "-authoredon", "_count": "50"},
+            headers=HEADERS,
+        )
+    if resp.status_code >= 400:
+        return []
+    return [e["resource"] for e in resp.json().get("entry", [])]
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# OBSERVATIONS (labs + vitals)
+# ════════════════════════════════════════════════════════════════════════════
+
+async def get_observations(patient_id: str, category: str = "laboratory") -> list[dict]:
+    """GET /Observation?patient={id}&category={category} — labs or vitals."""
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(
+            f"{FHIR_BASE}/Observation",
+            params={"patient": patient_id, "category": category,
+                    "_sort": "-date", "_count": "50"},
+            headers=HEADERS,
+        )
+    if resp.status_code >= 400:
+        return []
+    return [e["resource"] for e in resp.json().get("entry", [])]
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# ALLERGIES
+# ════════════════════════════════════════════════════════════════════════════
+
+async def get_allergies(patient_id: str) -> list[dict]:
+    """GET /AllergyIntolerance?patient={id}"""
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(
+            f"{FHIR_BASE}/AllergyIntolerance",
+            params={"patient": patient_id, "_count": "50"},
+            headers=HEADERS,
+        )
+    if resp.status_code >= 400:
+        return []
+    return [e["resource"] for e in resp.json().get("entry", [])]
+
+
+# ════════════════════════════════════════════════════════════════════════════
 # SERVER HEALTH
 # ════════════════════════════════════════════════════════════════════════════
 
