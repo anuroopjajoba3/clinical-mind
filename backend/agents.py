@@ -21,7 +21,6 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from pubmed import get_clinical_papers
 from clinicaltrials import search_clinical_trials
-from fhir_client import get_patient, get_encounters_for_patient, get_appointments_for_patient
 
 
 # ─── State Schema ────────────────────────────────────────────────────────────
@@ -88,15 +87,15 @@ def _strip_json(raw: str) -> str:
     return raw.strip()
 
 
-# ─── Agent 0a: FHIR Context Agent ───────────────────────────────────────────
+# ─── Agent 0a: Patient Memory Agent ─────────────────────────────────────────
 
 async def fhir_context_agent(state: ClinicalState) -> ClinicalState:
     """
-    Optionally fetches Patient, Encounter, and Appointment data from the FHIR
-    server and attaches it as context for the downstream agents.
+    Reads the full patient memory from PostgreSQL (conditions, medications,
+    labs, allergies, encounters) and builds a rich clinical context block
+    that downstream agents use to personalise their reasoning.
 
-    If no fhir_patient_id is provided this agent is a no-op — the pipeline
-    proceeds exactly as before for unauthenticated / non-FHIR queries.
+    If no fhir_patient_id is provided this agent is a no-op.
     """
     state["agent_status"]["fhir"] = "running"
     patient_id = state.get("fhir_patient_id")
@@ -107,67 +106,56 @@ async def fhir_context_agent(state: ClinicalState) -> ClinicalState:
         return state
 
     try:
-        # Parallel fetch: patient + encounters + appointments
-        patient, encounters, appointments = await asyncio.gather(
-            get_patient(patient_id),
-            get_encounters_for_patient(patient_id),
-            get_appointments_for_patient(patient_id),
-            return_exceptions=True,
-        )
+        import httpx
+        backend_url = os.getenv("BACKEND_SELF_URL", "http://localhost:8000")
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(f"{backend_url}/patients/{patient_id}")
 
-        def safe(r):
-            return r if not isinstance(r, Exception) else {}
+        if resp.status_code == 404:
+            state["agent_status"]["fhir"] = "skipped"
+            state["fhir_context"] = None
+            return state
 
-        patient     = safe(patient)
-        encounters  = safe(encounters)  if not isinstance(encounters, Exception)  else []
-        appointments= safe(appointments) if not isinstance(appointments, Exception) else []
+        resp.raise_for_status()
+        summary = resp.json()
 
-        # Extract human-readable name
-        name_block = patient.get("name", [{}])[0]
-        given  = " ".join(name_block.get("given", []))
-        family = name_block.get("family", "")
-        dob    = patient.get("birthDate", "unknown")
-        gender = patient.get("gender", "unknown")
-
-        # Summarise last 5 encounters
-        enc_summaries = []
-        for e in encounters[:5]:
-            reason = ""
-            reason_codes = e.get("reasonCode", [{}])
-            if reason_codes:
-                reason = reason_codes[0].get("text", "") or \
-                         reason_codes[0].get("coding", [{}])[0].get("display", "")
-            period = e.get("period", {})
-            enc_summaries.append({
-                "id": e.get("id"),
-                "status": e.get("status"),
-                "reason": reason,
-                "start": period.get("start", ""),
-                "class": e.get("class", {}).get("code", ""),
-            })
-
-        # Summarise upcoming appointments
-        appt_summaries = []
-        for a in appointments[:5]:
-            appt_summaries.append({
-                "id": a.get("id"),
-                "status": a.get("status"),
-                "description": a.get("description", ""),
-                "start": a.get("start", ""),
-            })
+        # Build structured context the LLM can reason over
+        conditions = [
+            f"{c['display']} ({c['status']})"
+            for c in summary.get("conditions", [])
+            if c.get("display")
+        ]
+        medications = [
+            c["display"] for c in summary.get("medications", [])
+            if c.get("display") and c.get("status") == "active"
+        ]
+        labs = [
+            f"{l['display']}: {l['value']} ({l['date']})"
+            for l in summary.get("labs", [])
+            if l.get("display") and l.get("value")
+        ]
+        allergies = [
+            f"{a['display']} (criticality: {a.get('extra', {}).get('criticality', 'unknown')})"
+            for a in summary.get("allergies", [])
+            if a.get("display")
+        ]
 
         state["fhir_context"] = {
-            "patient_id": patient_id,
-            "name": f"{given} {family}".strip(),
-            "dob": dob,
-            "gender": gender,
-            "encounters": enc_summaries,
-            "appointments": appt_summaries,
+            "patient_id":  patient_id,
+            "name":        summary["full_name"],
+            "dob":         summary["birth_date"],
+            "gender":      summary["gender"],
+            "mrn":         summary["mrn"],
+            "conditions":  conditions,
+            "medications": medications,
+            "labs":        labs,
+            "allergies":   allergies,
+            "encounters":  summary.get("encounters", []),
         }
         state["agent_status"]["fhir"] = "complete"
 
     except Exception as e:
-        print(f"FHIR context agent error: {e}")
+        print(f"Patient memory agent error: {e}")
         state["fhir_context"] = None
         state["agent_status"]["fhir"] = "error"
 
@@ -204,19 +192,26 @@ async def pico_agent(state: ClinicalState) -> ClinicalState:
     state["agent_status"]["pico"] = "running"
     llm = get_llm(max_tokens=1024)
 
-    # Enrich query with FHIR patient context when available
+    # Enrich query with full patient memory context
     question = state["question"]
     fhir_ctx = state.get("fhir_context")
     if fhir_ctx:
-        enc_text = "; ".join(
-            f"{e['reason']} ({e['start'][:10]})"
-            for e in fhir_ctx.get("encounters", [])[:3] if e.get("reason")
-        )
+        lines = [
+            f"Patient: {fhir_ctx['name']}, DOB {fhir_ctx['dob']}, {fhir_ctx['gender']} ({fhir_ctx.get('mrn', '')})",
+        ]
+        if fhir_ctx.get("conditions"):
+            lines.append("Active conditions: " + "; ".join(fhir_ctx["conditions"][:6]))
+        if fhir_ctx.get("medications"):
+            lines.append("Current medications: " + "; ".join(fhir_ctx["medications"][:6]))
+        if fhir_ctx.get("labs"):
+            lines.append("Recent labs: " + "; ".join(fhir_ctx["labs"][:6]))
+        if fhir_ctx.get("allergies"):
+            lines.append("Allergies: " + "; ".join(fhir_ctx["allergies"]))
+        patient_block = "\n".join(lines)
         question = (
             f"{question}\n\n"
-            f"[Patient context from EMR — {fhir_ctx['name']}, "
-            f"DOB {fhir_ctx['dob']}, {fhir_ctx['gender']}. "
-            f"Recent encounters: {enc_text or 'none recorded'}]"
+            f"[Patient EMR context — use this to personalise PICO and flag any "
+            f"contraindications or relevant comorbidities]\n{patient_block}"
         )
 
     try:
@@ -403,31 +398,47 @@ async def summarizer_agent(state: ClinicalState) -> ClinicalState:
     return state
 
 
-# ─── Agent 3: Contradiction Detector ─────────────────────────────────────────
+# ─── Agent 3: Contradiction Detector (powered by Meditron via Ollama) ────────
 
-CONTRADICTION_SYSTEM = """You are a clinical evidence analyst. Given a list of paper summaries,
-identify contradictions — cases where papers reach opposing conclusions about the same intervention.
-Return ONLY valid JSON, no markdown fences.
+CONTRADICTION_PROMPT = """You are a medical evidence analyst. Analyse these paper summaries and identify contradictions — cases where papers reach opposing conclusions about the same intervention or treatment.
 
-JSON schema:
-{
+Return ONLY valid JSON, no markdown, no explanation outside the JSON.
+
+Schema:
+{{
   "contradictions": [
-    {
+    {{
       "paper_a_title": "...",
       "paper_b_title": "...",
       "conflict": "one sentence describing the contradiction",
       "severity": "major | minor"
-    }
+    }}
   ],
   "consistency_note": "brief overall assessment of evidence consistency"
-}
+}}
 
-Return {"contradictions": [], "consistency_note": "..."} if no contradictions found.
-"""
+Return {{"contradictions": [], "consistency_note": "consistent"}} if no contradictions found.
+
+Clinical question: {question}
+
+Paper summaries:
+{summaries}"""
+
+
+def _get_meditron():
+    """Returns a Meditron LLM via Ollama. Falls back to Claude if Ollama is unavailable."""
+    try:
+        from langchain_ollama import ChatOllama
+        return ChatOllama(model="meditron", temperature=0.1, num_predict=1024)
+    except Exception:
+        return None
 
 
 async def contradiction_agent(state: ClinicalState) -> ClinicalState:
-    """Detects conflicting findings across papers."""
+    """
+    Detects conflicting findings across papers using Meditron (local medical LLM).
+    Falls back to Claude if Ollama is not available.
+    """
     state["agent_status"]["contradiction"] = "running"
 
     summaries = state.get("summaries", [])
@@ -441,16 +452,45 @@ async def contradiction_agent(state: ClinicalState) -> ClinicalState:
         for i, s in enumerate(summaries)
     )
 
-    llm = get_llm(max_tokens=1024)
+    prompt_text = CONTRADICTION_PROMPT.format(
+        question=state["question"],
+        summaries=summary_block,
+    )
+
+    # Try Meditron first (30s timeout), fall back to Claude
+    meditron = _get_meditron()
+    raw = None
+    if meditron:
+        try:
+            print("Contradiction agent: trying Meditron (local medical LLM, 30s timeout)")
+            response = await asyncio.wait_for(
+                meditron.ainvoke(prompt_text),
+                timeout=30.0,
+            )
+            raw = response.content
+            print("Contradiction agent: Meditron responded")
+        except asyncio.TimeoutError:
+            print("Contradiction agent: Meditron timed out, falling back to Claude")
+            raw = None
+        except Exception as e:
+            print(f"Contradiction agent: Meditron error ({e}), falling back to Claude")
+            raw = None
+
     try:
-        response = await llm.ainvoke([
-            SystemMessage(content=CONTRADICTION_SYSTEM),
-            HumanMessage(content=f"Clinical question: {state['question']}\n\nPapers:\n{summary_block}"),
-        ])
-        result = json.loads(_strip_json(response.content))
+        if raw is None:
+            print("Contradiction agent: using Claude")
+            llm = get_llm(max_tokens=1024)
+            response = await llm.ainvoke([
+                SystemMessage(content="You are a clinical evidence analyst. Return only valid JSON."),
+                HumanMessage(content=prompt_text),
+            ])
+            raw = response.content
+
+        result = json.loads(_strip_json(raw))
         state["contradictions"] = result.get("contradictions", [])
-        # Attach consistency note to report dict
         state.setdefault("report", {})["consistency_note"] = result.get("consistency_note", "")
+        state.setdefault("report", {})["contradiction_model"] = "meditron" if (meditron and "Meditron responded" in str(raw)) else "claude"
+
     except Exception as e:
         print(f"Contradiction agent error: {e}")
         state["contradictions"] = []
@@ -521,8 +561,24 @@ PICO Framework:
             for c in state["contradictions"]
         )
 
+    # Patient context block for synthesis
+    patient_block = ""
+    fhir_ctx = state.get("fhir_context")
+    if fhir_ctx:
+        lines = [f"\nPatient: {fhir_ctx['name']} ({fhir_ctx.get('mrn', '')})"]
+        if fhir_ctx.get("conditions"):
+            lines.append("  Conditions: " + "; ".join(fhir_ctx["conditions"][:6]))
+        if fhir_ctx.get("medications"):
+            lines.append("  Medications: " + "; ".join(fhir_ctx["medications"][:6]))
+        if fhir_ctx.get("labs"):
+            lines.append("  Recent labs: " + "; ".join(fhir_ctx["labs"][:4]))
+        if fhir_ctx.get("allergies"):
+            lines.append("  Allergies: " + "; ".join(fhir_ctx["allergies"]))
+        lines.append("  NOTE: Tailor recommendations to this patient's comorbidities, current medications, and lab values. Flag contraindications explicitly.")
+        patient_block = "\n".join(lines)
+
     prompt = f"""Clinical Question: {state['question']}
-{pico_block}
+{pico_block}{patient_block}
 Evidence from {len(state['summaries'])} sources ({sum(1 for s in state['summaries'] if s.get('is_trial'))} trials, {sum(1 for s in state['summaries'] if not s.get('is_trial'))} published papers):
 {summaries_text}{contradictions_text}
 

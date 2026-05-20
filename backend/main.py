@@ -62,8 +62,10 @@ _origins = [
 ]
 # Ensure all local dev variants are included regardless of .env
 for _dev in (
-    "http://localhost:5173", "http://localhost:3000",
-    "http://127.0.0.1:5173", "http://127.0.0.1:3000",
+    "http://localhost:5173", "http://localhost:5174",
+    "http://localhost:3000", "http://localhost:4173",
+    "http://127.0.0.1:5173", "http://127.0.0.1:5174",
+    "http://127.0.0.1:3000",
 ):
     if _dev not in _origins:
         _origins.append(_dev)
