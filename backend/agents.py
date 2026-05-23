@@ -57,6 +57,8 @@ class ClinicalState(TypedDict):
     # Optional FHIR patient context
     fhir_patient_id: Optional[str]
     fhir_context: Optional[dict]       # patient demographics + recent encounters/appts
+    # Prior Q&A pairs in this session for continuity
+    session_history: list[dict]        # [{"question": str, "answer": str}, ...]
     pico: Optional[PICOExtract]
     raw_papers: list[dict]
     summaries: list[PaperSummary]
@@ -129,13 +131,31 @@ async def fhir_context_agent(state: ClinicalState) -> ClinicalState:
             c["display"] for c in summary.get("medications", [])
             if c.get("display") and c.get("status") == "active"
         ]
+        # Most-recent value per lab for point-in-time context
+        latest_labs: dict[str, dict] = {}
+        for l in summary.get("labs", []):
+            name = l.get("display", "")
+            if name and l.get("value"):
+                # labs are sorted ascending by date — last one wins
+                latest_labs[name] = l
+
         labs = [
-            f"{l['display']}: {l['value']} ({l['date']})"
-            for l in summary.get("labs", [])
-            if l.get("display") and l.get("value")
+            f"{name}: {l['value']} ({l['date']})"
+            for name, l in latest_labs.items()
         ]
+
+        # Build lab trend strings for AI context (e.g. "HbA1c: 6.2% → 6.9% → 7.4% → 7.8%")
+        lab_trends_raw = summary.get("lab_trends", {})
+        lab_trend_lines = []
+        for lab_name, readings in lab_trends_raw.items():
+            if len(readings) >= 2:
+                values = " → ".join(
+                    f"{r['value']} ({r['date']})" for r in readings
+                )
+                lab_trend_lines.append(f"{lab_name}: {values}")
+
         allergies = [
-            f"{a['display']} (criticality: {a.get('extra', {}).get('criticality', 'unknown')})"
+            a["display"]
             for a in summary.get("allergies", [])
             if a.get("display")
         ]
@@ -149,6 +169,7 @@ async def fhir_context_agent(state: ClinicalState) -> ClinicalState:
             "conditions":  conditions,
             "medications": medications,
             "labs":        labs,
+            "lab_trends":  lab_trend_lines,   # longitudinal trajectory strings
             "allergies":   allergies,
             "encounters":  summary.get("encounters", []),
         }
@@ -204,14 +225,32 @@ async def pico_agent(state: ClinicalState) -> ClinicalState:
         if fhir_ctx.get("medications"):
             lines.append("Current medications: " + "; ".join(fhir_ctx["medications"][:6]))
         if fhir_ctx.get("labs"):
-            lines.append("Recent labs: " + "; ".join(fhir_ctx["labs"][:6]))
+            lines.append("Latest labs: " + "; ".join(fhir_ctx["labs"][:6]))
+        if fhir_ctx.get("lab_trends"):
+            lines.append("Lab trajectories (oldest → newest):")
+            for trend in fhir_ctx["lab_trends"][:4]:
+                lines.append(f"  • {trend}")
         if fhir_ctx.get("allergies"):
             lines.append("Allergies: " + "; ".join(fhir_ctx["allergies"]))
         patient_block = "\n".join(lines)
         question = (
             f"{question}\n\n"
-            f"[Patient EMR context — use this to personalise PICO and flag any "
-            f"contraindications or relevant comorbidities]\n{patient_block}"
+            f"[Patient EMR context — use lab trajectories to identify trends "
+            f"and personalise PICO. Flag contraindications and progression patterns.]\n{patient_block}"
+        )
+
+    # Inject session history so PICO understands clinical conversation continuity
+    session_history = state.get("session_history") or []
+    if session_history:
+        history_lines = []
+        for entry in session_history[-3:]:  # cap at last 3 exchanges
+            history_lines.append(f"Q: {entry['question']}")
+            history_lines.append(f"A (summary): {entry['answer']}")
+        question = (
+            f"{question}\n\n"
+            f"[Session context — prior clinical questions asked in this session. "
+            f"Build on these, avoid repeating covered ground, and be progressive.]\n"
+            + "\n".join(history_lines)
         )
 
     try:
@@ -499,20 +538,167 @@ async def contradiction_agent(state: ClinicalState) -> ClinicalState:
     return state
 
 
+# ─── Agent 4b: Drug Interaction Agent ───────────────────────────────────────
+
+# Known high-risk drug interaction pairs for rule-based fast path
+_KNOWN_INTERACTIONS = [
+    ({"warfarin"}, {"nsaid", "ibuprofen", "naproxen", "aspirin", "celecoxib"},
+     "major", "NSAIDs + warfarin significantly increase bleeding risk."),
+    ({"warfarin"}, {"amiodarone"}, "major",
+     "Amiodarone inhibits warfarin metabolism, potentiating anticoagulation."),
+    ({"metformin"}, {"contrast", "iodinated contrast"},
+     "major", "IV contrast with metformin risks contrast-induced nephropathy and lactic acidosis — hold metformin 48h."),
+    ({"ssri", "sertraline", "fluoxetine", "escitalopram", "paroxetine", "citalopram"},
+     {"maoi", "selegiline", "phenelzine", "tranylcypromine"},
+     "major", "SSRI + MAOI combination is contraindicated — risk of serotonin syndrome."),
+    ({"lithium"}, {"nsaid", "ibuprofen", "naproxen", "diclofenac"},
+     "major", "NSAIDs reduce renal lithium clearance, causing toxicity."),
+    ({"ace inhibitor", "lisinopril", "enalapril", "ramipril", "benazepril"},
+     {"arb", "losartan", "valsartan", "irbesartan", "candesartan"},
+     "moderate", "Dual RAAS blockade (ACE inhibitor + ARB) increases hyperkalemia and AKI risk."),
+    ({"statin", "simvastatin", "atorvastatin", "rosuvastatin"},
+     {"amiodarone", "clarithromycin", "erythromycin"},
+     "moderate", "CYP3A4 inhibitors increase statin plasma levels, raising myopathy risk."),
+    ({"qt prolonging", "amiodarone", "sotalol", "haloperidol", "methadone", "azithromycin"},
+     {"qt prolonging", "amiodarone", "sotalol", "haloperidol", "methadone", "azithromycin"},
+     "major", "Multiple QT-prolonging agents increase risk of torsades de pointes."),
+    ({"sglt2 inhibitor", "dapagliflozin", "empagliflozin", "canagliflozin"},
+     {"loop diuretic", "furosemide", "bumetanide", "torsemide"},
+     "moderate", "SGLT2 inhibitor + loop diuretic combination increases dehydration and hypotension risk."),
+    ({"clopidogrel"}, {"ppi", "omeprazole", "esomeprazole"},
+     "moderate", "Omeprazole/esomeprazole reduce clopidogrel antiplatelet effect via CYP2C19 inhibition."),
+]
+
+
+def _check_rule_based(current_meds: list[str], recommendations_text: str) -> list[dict]:
+    """Fast rule-based check against known interaction pairs."""
+    current_lower = {m.lower() for m in current_meds}
+    rec_lower = recommendations_text.lower()
+    found = []
+
+    for current_set, rec_set, severity, explanation in _KNOWN_INTERACTIONS:
+        current_match = any(
+            any(k in med for k in current_set) for med in current_lower
+        )
+        rec_match = any(k in rec_lower for k in rec_set)
+        if current_match and rec_match:
+            found.append({
+                "type": "drug_interaction",
+                "severity": severity,
+                "description": explanation,
+                "current_meds": [m for m in current_lower if any(k in m for k in current_set)],
+            })
+    return found
+
+
+async def drug_interaction_agent(state: ClinicalState) -> ClinicalState:
+    """
+    Checks whether any evidence-based recommendations conflict with the
+    patient's current medication list. Appends warnings to state['report'].
+    Skips gracefully if no patient context is loaded.
+    """
+    state["agent_status"]["drug_interaction"] = "running"
+
+    fhir_ctx = state.get("fhir_context")
+    if not fhir_ctx or not fhir_ctx.get("medications"):
+        # No patient loaded — nothing to check
+        state.setdefault("report", {})["drug_interactions"] = []
+        state["agent_status"]["drug_interaction"] = "complete"
+        return state
+
+    current_meds = fhir_ctx["medications"]
+    summaries_text = " ".join(
+        f"{s.get('intervention', '')} {s.get('key_outcomes', '')}"
+        for s in state.get("summaries", [])
+    )
+
+    # 1. Fast rule-based check
+    rule_hits = _check_rule_based(current_meds, summaries_text)
+
+    # 2. LLM-based check (uses Claude for nuanced interaction detection)
+    llm_hits: list[dict] = []
+    if current_meds and summaries_text.strip():
+        prompt = f"""You are a clinical pharmacist checking drug interactions.
+
+Patient's current medications:
+{chr(10).join(f"- {m}" for m in current_meds[:10])}
+
+The following clinical interventions are being considered based on evidence:
+{summaries_text[:1200]}
+
+Identify any significant drug-drug interactions between the patient's current medications and the interventions above.
+Return ONLY valid JSON in this exact format:
+{{
+  "interactions": [
+    {{
+      "severity": "major|moderate|minor",
+      "current_drug": "name of patient's drug",
+      "new_drug": "name of potentially interacting drug from recommendations",
+      "mechanism": "brief pharmacological explanation",
+      "clinical_significance": "what this means clinically and what to do"
+    }}
+  ]
+}}
+If no significant interactions found, return: {{"interactions": []}}"""
+
+        try:
+            llm = get_llm(max_tokens=800)
+            resp = await asyncio.wait_for(
+                llm.ainvoke([
+                    SystemMessage(content="You are a clinical pharmacist. Return only valid JSON."),
+                    HumanMessage(content=prompt),
+                ]),
+                timeout=25.0,
+            )
+            parsed = json.loads(_strip_json(resp.content))
+            llm_hits = [
+                {
+                    "type": "drug_interaction",
+                    "severity": h.get("severity", "moderate"),
+                    "description": f"{h.get('current_drug', '?')} ↔ {h.get('new_drug', '?')}: {h.get('clinical_significance', h.get('mechanism', ''))}",
+                    "current_meds": [h.get("current_drug", "")],
+                }
+                for h in parsed.get("interactions", [])
+                if h.get("severity") in ("major", "moderate")
+            ]
+        except Exception as e:
+            print(f"Drug interaction LLM check failed: {e}")
+
+    # Merge and deduplicate
+    all_interactions = rule_hits + [h for h in llm_hits if h not in rule_hits]
+    state.setdefault("report", {})["drug_interactions"] = all_interactions
+
+    if all_interactions:
+        print(f"Drug interaction agent: found {len(all_interactions)} interaction(s)")
+
+    state["agent_status"]["drug_interaction"] = "complete"
+    return state
+
+
 # ─── Agent 4: Synthesize Agent ────────────────────────────────────────────────
 
 REPORT_SYSTEM = """You are a senior clinical evidence specialist writing a structured
 clinical evidence report for healthcare professionals. Return ONLY valid JSON, no markdown.
 
+The sources provided are numbered starting at 1. For each recommendation you MUST cite
+which source numbers support it using the "source_refs" field (array of integers).
+Be specific — only cite sources that directly support that recommendation.
+
 JSON schema:
 {
   "background": "2-3 sentence clinical context",
   "key_interventions": [
-    {"name": "...", "evidence_level": "1A/1B/2A/etc", "summary": "one sentence"}
+    {"name": "...", "evidence_level": "1A/1B/2A/etc", "summary": "one sentence", "source_refs": [1, 2]}
   ],
   "evidence_summary": "3-4 paragraph synthesis (separate paragraphs with \\n\\n)",
   "recommendations": [
-    {"rank": 1, "recommendation": "...", "rationale": "...", "evidence_level": "..."}
+    {
+      "rank": 1,
+      "recommendation": "...",
+      "rationale": "...",
+      "evidence_level": "...",
+      "source_refs": [1, 3]
+    }
   ],
   "clinical_bottom_line": "1-2 sentence actionable take-away",
   "limitations": "key gaps and limitations in the evidence base",
@@ -571,14 +757,35 @@ PICO Framework:
         if fhir_ctx.get("medications"):
             lines.append("  Medications: " + "; ".join(fhir_ctx["medications"][:6]))
         if fhir_ctx.get("labs"):
-            lines.append("  Recent labs: " + "; ".join(fhir_ctx["labs"][:4]))
+            lines.append("  Latest labs: " + "; ".join(fhir_ctx["labs"][:4]))
+        if fhir_ctx.get("lab_trends"):
+            lines.append("  Lab trajectories (key trends to reason about):")
+            for trend in fhir_ctx["lab_trends"][:4]:
+                lines.append(f"    • {trend}")
         if fhir_ctx.get("allergies"):
             lines.append("  Allergies: " + "; ".join(fhir_ctx["allergies"]))
-        lines.append("  NOTE: Tailor recommendations to this patient's comorbidities, current medications, and lab values. Flag contraindications explicitly.")
+        lines.append(
+            "  NOTE: Use lab trajectories to identify disease progression. "
+            "Tailor recommendations to this patient's comorbidities, medications, and trends. "
+            "Flag contraindications explicitly. Reference specific lab values and their direction."
+        )
         patient_block = "\n".join(lines)
 
+    # Session continuity block
+    session_block = ""
+    session_history = state.get("session_history") or []
+    if session_history:
+        prev_lines = []
+        for entry in session_history[-3:]:
+            prev_lines.append(f"  Q: {entry['question']}\n  A: {entry['answer']}")
+        session_block = (
+            "\n\nSession context (prior questions in this clinical session — "
+            "build on these findings, don't repeat covered ground, and note any evolution):\n"
+            + "\n".join(prev_lines)
+        )
+
     prompt = f"""Clinical Question: {state['question']}
-{pico_block}{patient_block}
+{pico_block}{patient_block}{session_block}
 Evidence from {len(state['summaries'])} sources ({sum(1 for s in state['summaries'] if s.get('is_trial'))} trials, {sum(1 for s in state['summaries'] if not s.get('is_trial'))} published papers):
 {summaries_text}{contradictions_text}
 
@@ -626,6 +833,9 @@ def route_after_summarizer(state: ClinicalState) -> str:
     return END if state.get("error") else "contradiction"
 
 def route_after_contradiction(state: ClinicalState) -> str:
+    return END if state.get("error") else "drug_interaction"
+
+def route_after_drug_interaction(state: ClinicalState) -> str:
     return END if state.get("error") else "synthesize"
 
 
@@ -634,20 +844,22 @@ def route_after_contradiction(state: ClinicalState) -> str:
 def build_graph():
     graph = StateGraph(ClinicalState)
 
-    graph.add_node("fhir",          fhir_context_agent)
-    graph.add_node("pico_extract",  pico_agent)
-    graph.add_node("search",        search_agent)
-    graph.add_node("summarizer",    summarizer_agent)
-    graph.add_node("contradiction", contradiction_agent)
-    graph.add_node("synthesize",    synthesize_agent)
+    graph.add_node("fhir",             fhir_context_agent)
+    graph.add_node("pico_extract",     pico_agent)
+    graph.add_node("search",           search_agent)
+    graph.add_node("summarizer",       summarizer_agent)
+    graph.add_node("contradiction",    contradiction_agent)
+    graph.add_node("drug_interaction", drug_interaction_agent)
+    graph.add_node("synthesize",       synthesize_agent)
 
     graph.set_entry_point("fhir")
 
-    graph.add_conditional_edges("fhir",          route_after_fhir,          {"pico_extract": "pico_extract", END: END})
-    graph.add_conditional_edges("pico_extract",  route_after_pico,          {"search": "search", END: END})
-    graph.add_conditional_edges("search",         route_after_search,        {"summarizer": "summarizer", END: END})
-    graph.add_conditional_edges("summarizer",     route_after_summarizer,    {"contradiction": "contradiction", END: END})
-    graph.add_conditional_edges("contradiction",  route_after_contradiction, {"synthesize": "synthesize", END: END})
+    graph.add_conditional_edges("fhir",             route_after_fhir,             {"pico_extract": "pico_extract", END: END})
+    graph.add_conditional_edges("pico_extract",     route_after_pico,             {"search": "search", END: END})
+    graph.add_conditional_edges("search",            route_after_search,           {"summarizer": "summarizer", END: END})
+    graph.add_conditional_edges("summarizer",        route_after_summarizer,       {"contradiction": "contradiction", END: END})
+    graph.add_conditional_edges("contradiction",     route_after_contradiction,    {"drug_interaction": "drug_interaction", END: END})
+    graph.add_conditional_edges("drug_interaction",  route_after_drug_interaction, {"synthesize": "synthesize", END: END})
     graph.add_edge("synthesize", END)
 
     return graph.compile()

@@ -32,14 +32,18 @@ function DataRow({ label, value }) {
   )
 }
 
-export default function EvidenceCard({ summary, index }) {
+export default function EvidenceCard({ summary, index, highlighted }) {
   const [expanded, setExpanded] = useState(false)
   const levelInfo = LEVEL_CONFIG[summary.evidence_level] || LEVEL_CONFIG['4']
 
   return (
     <div
-      className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm
-                 hover:border-blue-300 hover:shadow-md transition-all duration-300 animate-slide-up opacity-0"
+      className={`bg-white rounded-xl border overflow-hidden shadow-sm
+                 hover:shadow-md transition-all duration-300 animate-slide-up opacity-0
+                 ${highlighted
+                   ? 'border-blue-400 ring-2 ring-blue-300 ring-offset-1 shadow-blue-100'
+                   : 'border-gray-200 hover:border-blue-300'
+                 }`}
       style={{ animationDelay: `${index * 80}ms`, animationFillMode: 'forwards' }}
     >
       {/* Header */}

@@ -45,7 +45,7 @@ def publish(r: sync_redis.Redis, job_id: str, data: dict):
 
 
 @celery_app.task(bind=True, name="run_pipeline", max_retries=2)
-def run_pipeline(self, job_id: str, question: str, fhir_patient_id: str = None):
+def run_pipeline(self, job_id: str, question: str, fhir_patient_id: str = None, session_history: list = None):
     """
     Run the full 5-agent LangGraph pipeline.
     Updates are published to Redis so the SSE endpoint can stream them.
@@ -62,6 +62,7 @@ def run_pipeline(self, job_id: str, question: str, fhir_patient_id: str = None):
         "question": question,
         "job_id": job_id,
         "fhir_patient_id": fhir_patient_id,
+        "session_history": session_history or [],
         "fhir_context": None,
         "pico": None,
         "raw_papers": [],
@@ -70,7 +71,8 @@ def run_pipeline(self, job_id: str, question: str, fhir_patient_id: str = None):
         "report": {},
         "agent_status": {
             "fhir": "idle", "pico": "idle", "search": "idle",
-            "summarizer": "idle", "contradiction": "idle", "synthesize": "idle",
+            "summarizer": "idle", "contradiction": "idle",
+            "drug_interaction": "idle", "synthesize": "idle",
         },
         "error": None,
     }

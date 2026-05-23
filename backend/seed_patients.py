@@ -35,10 +35,26 @@ PATIENTS = [
             ("197381",  "Amlodipine 5mg",         "active",  "2022-01-20"),
         ],
         "labs": [
-            ("4548-4",  "Hemoglobin A1c",         "7.8 %",   "2024-11-01"),
-            ("2160-0",  "Creatinine",              "1.6 mg/dL","2024-11-01"),
-            ("33914-3", "eGFR",                   "42 mL/min","2024-11-01"),
-            ("2093-3",  "Total Cholesterol",       "198 mg/dL","2024-10-15"),
+            # HbA1c trend: worsening over 4 years (6.2 → 6.9 → 7.4 → 7.8)
+            ("4548-4",  "Hemoglobin A1c",  "6.2 %",    "2021-03-10"),
+            ("4548-4",  "Hemoglobin A1c",  "6.9 %",    "2022-05-15"),
+            ("4548-4",  "Hemoglobin A1c",  "7.4 %",    "2023-08-20"),
+            ("4548-4",  "Hemoglobin A1c",  "7.8 %",    "2024-11-01"),
+            # eGFR trend: declining kidney function (62 → 55 → 48 → 42)
+            ("33914-3", "eGFR",            "62 mL/min", "2021-03-10"),
+            ("33914-3", "eGFR",            "55 mL/min", "2022-05-15"),
+            ("33914-3", "eGFR",            "48 mL/min", "2023-08-20"),
+            ("33914-3", "eGFR",            "42 mL/min", "2024-11-01"),
+            # Creatinine trend: rising (1.1 → 1.2 → 1.4 → 1.6)
+            ("2160-0",  "Creatinine",      "1.1 mg/dL", "2021-03-10"),
+            ("2160-0",  "Creatinine",      "1.2 mg/dL", "2022-05-15"),
+            ("2160-0",  "Creatinine",      "1.4 mg/dL", "2023-08-20"),
+            ("2160-0",  "Creatinine",      "1.6 mg/dL", "2024-11-01"),
+            # Cholesterol: improving on statin (248 → 221 → 205 → 198)
+            ("2093-3",  "Total Cholesterol", "248 mg/dL", "2021-03-10"),
+            ("2093-3",  "Total Cholesterol", "221 mg/dL", "2022-05-15"),
+            ("2093-3",  "Total Cholesterol", "205 mg/dL", "2023-08-20"),
+            ("2093-3",  "Total Cholesterol", "198 mg/dL", "2024-10-15"),
         ],
         "allergies": [("372687004", "Penicillin", "high")],
     },
@@ -58,9 +74,19 @@ PATIENTS = [
             ("308439",  "Furosemide 40mg",     "active", "2022-04-01"),
         ],
         "labs": [
-            ("33762-6", "NT-proBNP",           "1840 pg/mL","2024-10-20"),
-            ("2160-0",  "Creatinine",           "1.2 mg/dL", "2024-10-20"),
-            ("6301-6",  "INR",                  "2.3",        "2024-11-05"),
+            # NT-proBNP trend: initial spike then partial response to therapy
+            ("33762-6", "NT-proBNP",  "4200 pg/mL", "2022-03-05"),
+            ("33762-6", "NT-proBNP",  "2900 pg/mL", "2023-01-18"),
+            ("33762-6", "NT-proBNP",  "2100 pg/mL", "2024-04-10"),
+            ("33762-6", "NT-proBNP",  "1840 pg/mL", "2024-10-20"),
+            # INR trend: warfarin titration
+            ("6301-6",  "INR",  "1.4", "2022-04-01"),
+            ("6301-6",  "INR",  "1.9", "2022-06-15"),
+            ("6301-6",  "INR",  "2.6", "2023-09-20"),
+            ("6301-6",  "INR",  "2.3", "2024-11-05"),
+            ("2160-0",  "Creatinine", "1.0 mg/dL", "2022-03-05"),
+            ("2160-0",  "Creatinine", "1.1 mg/dL", "2023-01-18"),
+            ("2160-0",  "Creatinine", "1.2 mg/dL", "2024-10-20"),
         ],
         "allergies": [("372840004", "Aspirin", "unable-to-assess")],
     },

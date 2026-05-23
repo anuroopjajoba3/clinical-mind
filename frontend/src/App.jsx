@@ -10,7 +10,8 @@ import EvidenceCard    from './components/EvidenceCard'
 import ReportPanel     from './components/ReportPanel'
 import AuthModal       from './components/AuthModal'
 import SearchHistory   from './components/SearchHistory'
-import PatientSelector from './components/PatientSelector'
+import PatientSelector    from './components/PatientSelector'
+import PatientDetailPanel from './components/PatientDetailPanel'
 import { AnatomyBackground } from './components/AnatomyBackground'
 
 // ── constants ────────────────────────────────────────────────────
@@ -21,7 +22,7 @@ const EXAMPLE_QUESTIONS = [
   'What is the evidence for SGLT2 inhibitors in chronic kidney disease?',
 ]
 
-const ALL_AGENTS = ['fhir', 'pico', 'search', 'summarizer', 'contradiction', 'synthesize']
+const ALL_AGENTS = ['fhir', 'pico', 'search', 'summarizer', 'contradiction', 'drug_interaction', 'synthesize']
 
 // ── micro components ─────────────────────────────────────────────
 function Spinner() {
@@ -73,6 +74,38 @@ function PICOBadge({ pico }) {
   )
 }
 
+function DrugInteractionAlert({ interactions }) {
+  if (!interactions?.length) return null
+  const majors = interactions.filter(i => i.severity === 'major')
+  const others = interactions.filter(i => i.severity !== 'major')
+  return (
+    <motion.div
+      className="mb-4 bg-red-50 rounded-2xl p-5 border border-red-200"
+      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-lg">💊</span>
+        <p className="text-sm font-semibold text-red-800">
+          {interactions.length} Drug Interaction{interactions.length > 1 ? 's' : ''} Detected
+        </p>
+        {majors.length > 0 && (
+          <span className="text-xs bg-red-200 text-red-800 px-2 py-0.5 rounded-full font-medium">
+            {majors.length} major
+          </span>
+        )}
+      </div>
+      {interactions.map((d, i) => (
+        <div key={i} className="flex items-start gap-2 text-sm text-red-700 mt-2">
+          <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${
+            d.severity === 'major' ? 'bg-red-200 text-red-900' : 'bg-red-100 text-red-700'
+          }`}>{d.severity}</span>
+          <span>{d.description}</span>
+        </div>
+      ))}
+    </motion.div>
+  )
+}
+
 function ContradictionAlert({ contradictions }) {
   if (!contradictions?.length) return null
   return (
@@ -100,14 +133,20 @@ function ContradictionAlert({ contradictions }) {
 
 // ── main app ─────────────────────────────────────────────────────
 export default function App() {
-  const [question, setQuestion]           = useState('')
-  const [fhirPatientId, setFhirPatientId] = useState(null)
-  const [jobStatus, setJobStatus]         = useState(null)
-  const [isSubmitting, setIsSubmitting]   = useState(false)
-  const [error, setError]                 = useState(null)
-  const [user, setUser]                   = useState(null)
-  const [showAuth, setShowAuth]           = useState(false)
-  const [showHistory, setShowHistory]     = useState(false)
+  const [question, setQuestion]               = useState('')
+  const [fhirPatientId, setFhirPatientId]     = useState(null)
+  const [jobStatus, setJobStatus]             = useState(null)
+  const [isSubmitting, setIsSubmitting]       = useState(false)
+  const [error, setError]                     = useState(null)
+  const [user, setUser]                       = useState(null)
+  const [showAuth, setShowAuth]               = useState(false)
+  const [showHistory, setShowHistory]         = useState(false)
+  const [detailPatientId, setDetailPatientId]   = useState(null)
+  // Session memory: keyed by patientId (or '__global__' for no patient)
+  const [sessionMemory, setSessionMemory]       = useState({})
+  // Evidence provenance: which source card is highlighted
+  const [highlightedSource, setHighlightedSource] = useState(null)
+  const highlightTimerRef = useRef(null)
   const streamRef = useRef(null)
 
   useEffect(() => {
@@ -124,20 +163,48 @@ export default function App() {
   }
 
   const handleJobData = useCallback((data) => {
-    setJobStatus(prev => prev ? { ...prev, ...data } : data)
+    setJobStatus(prev => {
+      const next = prev ? { ...prev, ...data } : data
+      // When a job completes successfully, save it to session memory
+      if (data.status === 'complete' && data.report && Object.keys(data.report).length > 0) {
+        const key = fhirPatientId || '__global__'
+        const answer = data.report.clinical_bottom_line
+          || data.report.summary
+          || 'Evidence synthesis complete.'
+        setSessionMemory(mem => {
+          const existing = mem[key] || []
+          const entry = { question: next.question || '', answer: String(answer).slice(0, 400) }
+          return { ...mem, [key]: [...existing.slice(-4), entry] }  // keep last 5
+        })
+      }
+      return next
+    })
     if (['complete', 'error'].includes(data.status)) {
       setIsSubmitting(false)
       stopStream()
       if (data.error) setError(data.error)
     }
-  }, [])
+  }, [fhirPatientId])
+
+  const handleCiteClick = (index) => {
+    // Clear any pending highlight timer
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+    setHighlightedSource(index)
+    // Scroll to the evidence card
+    const el = document.getElementById(`source-${index}`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // Clear highlight after 2.5s
+    highlightTimerRef.current = setTimeout(() => setHighlightedSource(null), 2500)
+  }
 
   const handleSubmit = async (e) => {
     e?.preventDefault()
     if (!question.trim() || isSubmitting) return
     setError(null); setJobStatus(null); setIsSubmitting(true); stopStream()
     try {
-      const res = await researchAPI.start(question.trim(), fhirPatientId)
+      const sessionKey = fhirPatientId || '__global__'
+      const history = sessionMemory[sessionKey] || []
+      const res = await researchAPI.start(question.trim(), fhirPatientId, history)
       const { job_id } = res.data
       setJobStatus({
         job_id, status: 'pending', question: question.trim(),
@@ -165,8 +232,12 @@ export default function App() {
     try { const r = await researchAPI.status(job_id); setJobStatus(r.data); setQuestion(r.data.question) } catch {}
   }
 
-  const isRunning  = isSubmitting || (jobStatus && !['complete','error'].includes(jobStatus?.status))
-  const isComplete = jobStatus?.status === 'complete'
+  // A non-empty report means synthesis is done regardless of whether the final
+  // "status: complete" SSE event arrived (it can be missed on reconnect).
+  const hasFullReport = Boolean(jobStatus?.report && Object.keys(jobStatus.report).length > 0)
+  const isEffectivelyDone = hasFullReport || ['complete', 'error'].includes(jobStatus?.status)
+  const isRunning  = !isEffectivelyDone && (isSubmitting || (jobStatus && !['complete','error'].includes(jobStatus?.status)))
+  const isComplete = isEffectivelyDone && !jobStatus?.error
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-white via-blue-50/30 to-purple-50/30 relative overflow-x-hidden">
@@ -314,13 +385,40 @@ export default function App() {
                 </div>
               </motion.form>
 
+              {/* Session memory indicator */}
+              {(() => {
+                const key = fhirPatientId || '__global__'
+                const history = sessionMemory[key] || []
+                return history.length > 0 ? (
+                  <motion.div
+                    className="max-w-3xl mx-auto mb-3 flex items-center justify-between px-4 py-2.5 bg-indigo-50 border border-indigo-200 rounded-xl"
+                    initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+                  >
+                    <div className="flex items-center gap-2 text-xs text-indigo-700">
+                      <Brain className="w-3.5 h-3.5" />
+                      <span className="font-medium">Session memory active</span>
+                      <span className="text-indigo-500">· {history.length} prior {history.length === 1 ? 'query' : 'queries'} in context</span>
+                    </div>
+                    <button
+                      onClick={() => setSessionMemory(m => ({ ...m, [key]: [] }))}
+                      className="text-xs text-indigo-400 hover:text-indigo-700 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  </motion.div>
+                ) : null
+              })()}
+
               {/* Patient selector */}
               <motion.div
                 className="max-w-3xl mx-auto mb-8"
                 initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.55 }}
               >
-                <PatientSelector onPatientSelected={setFhirPatientId} />
+                <PatientSelector
+                  onPatientSelected={setFhirPatientId}
+                  onViewDetail={setDetailPatientId}
+                />
               </motion.div>
 
               {/* Example questions */}
@@ -473,6 +571,7 @@ export default function App() {
                 <div className="lg:col-span-2 space-y-6">
                   <PICOBadge pico={jobStatus.pico} />
                   <ContradictionAlert contradictions={jobStatus.contradictions} />
+                  <DrugInteractionAlert interactions={jobStatus.report?.drug_interactions} />
 
                   {/* Evidence cards */}
                   {jobStatus.summaries?.length > 0 && (
@@ -484,10 +583,11 @@ export default function App() {
                         {jobStatus.summaries.map((s, i) => (
                           <motion.div
                             key={s.pmid || i}
+                            id={`source-${i}`}
                             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: i * 0.06 }}
                           >
-                            <EvidenceCard summary={s} index={i} />
+                            <EvidenceCard summary={s} index={i} highlighted={highlightedSource === i} />
                           </motion.div>
                         ))}
                       </div>
@@ -505,7 +605,11 @@ export default function App() {
 
                   {/* Report */}
                   {jobStatus.report && Object.keys(jobStatus.report).length > 0 && (
-                    <ReportPanel report={jobStatus.report} question={jobStatus.question} />
+                    <ReportPanel
+                      report={jobStatus.report}
+                      question={jobStatus.question}
+                      onCiteClick={handleCiteClick}
+                    />
                   )}
 
                   {isRunning && jobStatus.summaries?.length > 0 && !jobStatus.report && (
@@ -525,6 +629,16 @@ export default function App() {
           <p className="text-xs text-slate-500">For research only · Not a substitute for clinical judgment</p>
         </div>
       </footer>
+
+      {/* Patient detail drawer */}
+      <AnimatePresence>
+        {detailPatientId && (
+          <PatientDetailPanel
+            fhirId={detailPatientId}
+            onClose={() => setDetailPatientId(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Auth modal */}
       <AnimatePresence>

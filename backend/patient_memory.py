@@ -5,6 +5,7 @@ into the local patient_entities table for fast, structured access.
 This is the persistence layer behind the Patient Memory Graph.
 """
 
+import re
 import uuid
 from datetime import datetime
 from sqlalchemy import select, delete
@@ -148,6 +149,138 @@ def _encounter_to_entity(patient_db_id: uuid.UUID, res: dict) -> PatientEntity:
     )
 
 
+# ─── Risk intelligence engine ────────────────────────────────────────────────
+
+def _parse_numeric(val: str) -> float | None:
+    if not val:
+        return None
+    m = re.match(r"^-?(\d+\.?\d*)", str(val))
+    return float(m.group(1)) if m else None
+
+
+def _compute_risk(ents: list) -> dict:
+    """
+    Analyzes a patient's entity list and returns a proactive risk assessment.
+    Checks lab trajectories, clinical thresholds, and condition-medication gaps.
+    Returns: { level: 'critical'|'watch'|'stable', flags: [str], flag_count: int }
+    """
+    flags = []
+    level = "stable"
+
+    # Build a lab map: normalised display name → list of {date, numeric}, sorted by date asc
+    lab_map: dict[str, list] = {}
+    for e in ents:
+        if e.entity_type == "lab":
+            key = (e.display or "").strip().lower()
+            lab_map.setdefault(key, []).append({
+                "date": e.onset_date or "",
+                "numeric": _parse_numeric(e.value),
+                "raw": e.value or "",
+            })
+    for key in lab_map:
+        lab_map[key].sort(key=lambda x: x["date"])
+
+    def _find_lab(keywords: list[str]) -> list | None:
+        for k, v in lab_map.items():
+            if any(kw in k for kw in keywords):
+                return v
+        return None
+
+    # ── eGFR ──────────────────────────────────────────────────────────────────
+    egfr = _find_lab(["egfr", "glomerular filtration"])
+    if egfr:
+        nums = [r["numeric"] for r in egfr if r["numeric"] is not None]
+        if nums:
+            latest = nums[-1]
+            if latest < 30:
+                flags.append(f"eGFR critically low ({latest:.0f} mL/min) — CKD Stage 4–5, nephrology referral warranted")
+                level = "critical"
+            elif latest < 45:
+                flags.append(f"eGFR below 45 ({latest:.0f} mL/min) — CKD Stage 3b")
+                if level == "stable":
+                    level = "watch"
+            if len(nums) >= 2:
+                # annualised decline across full reading span
+                annual_decline = (nums[0] - nums[-1]) / max(len(nums) - 1, 1)
+                if annual_decline > 10:
+                    flags.append(f"eGFR declining rapidly (~{annual_decline:.0f} mL/min/yr) — urgent nephrology review")
+                    level = "critical"
+                elif annual_decline > 5:
+                    flags.append(f"eGFR declining (~{annual_decline:.0f} mL/min/yr) — monitor closely")
+                    if level == "stable":
+                        level = "watch"
+
+    # ── HbA1c ─────────────────────────────────────────────────────────────────
+    hba1c = _find_lab(["hba1c", "hemoglobin a1c", "glycated", "glycosylated"])
+    if hba1c:
+        nums = [r["numeric"] for r in hba1c if r["numeric"] is not None]
+        if nums:
+            latest = nums[-1]
+            if latest >= 9.0:
+                flags.append(f"HbA1c critically elevated ({latest:.1f}%) — glycemic control failure")
+                level = "critical"
+            elif latest >= 8.0:
+                flags.append(f"HbA1c above target ({latest:.1f}%) — intensification indicated")
+                if level == "stable":
+                    level = "watch"
+            if len(nums) >= 2 and nums[-1] - nums[-2] >= 0.5:
+                flags.append(f"HbA1c worsening (+{nums[-1] - nums[-2]:.1f}% vs previous reading)")
+                if level == "stable":
+                    level = "watch"
+
+    # ── Creatinine trend ──────────────────────────────────────────────────────
+    creatinine = _find_lab(["creatinine"])
+    if creatinine:
+        nums = [r["numeric"] for r in creatinine if r["numeric"] is not None]
+        if len(nums) >= 2 and nums[-1] > nums[0] * 1.3 and nums[-1] > 1.4:
+            flags.append(f"Creatinine rising ({nums[0]:.1f} → {nums[-1]:.1f} mg/dL — {((nums[-1]/nums[0]-1)*100):.0f}% increase)")
+            if level == "stable":
+                level = "watch"
+
+    # ── NT-proBNP / BNP ───────────────────────────────────────────────────────
+    bnp = _find_lab(["bnp", "pro-bnp", "probnp", "natriuretic"])
+    if bnp:
+        nums = [r["numeric"] for r in bnp if r["numeric"] is not None]
+        if nums and nums[-1] > 900:
+            flags.append(f"NT-proBNP elevated ({nums[-1]:.0f} pg/mL) — heart failure decompensation risk")
+            if level == "stable":
+                level = "watch"
+
+    # ── Condition-medication gap analysis ─────────────────────────────────────
+    active_conditions = {
+        (e.display or "").lower()
+        for e in ents
+        if e.entity_type == "condition" and e.status in ("active", "confirmed")
+    }
+    active_meds_lower = {
+        (e.display or "").lower()
+        for e in ents
+        if e.entity_type == "medication" and e.status == "active"
+    }
+
+    has_ckd      = any("kidney" in c or "renal" in c or "ckd" in c or "nephrop" in c for c in active_conditions)
+    has_diabetes = any("diabetes" in c or "t2dm" in c or "type 2" in c for c in active_conditions)
+    has_hf       = any("heart failure" in c or "cardiac failure" in c for c in active_conditions)
+
+    _ace_arb_names = ["lisinopril", "enalapril", "ramipril", "perindopril",
+                      "losartan", "valsartan", "irbesartan", "candesartan", "olmesartan"]
+    has_ace_arb = any(any(d in m for d in _ace_arb_names) for m in active_meds_lower)
+
+    if has_ckd and not has_ace_arb:
+        flags.append("CKD documented — no ACE inhibitor or ARB detected in active medications")
+        if level == "stable":
+            level = "watch"
+
+    if not flags:
+        flags = ["No significant risk indicators detected in current data"]
+
+    return {
+        "level": level,
+        "flags": flags,
+        "flag_count": sum(1 for f in flags if "No significant" not in f),
+    }
+
+
 # ─── Core sync function ───────────────────────────────────────────────────────
 
 async def sync_patient(fhir_patient_id: str, db: AsyncSession) -> Patient:
@@ -182,13 +315,24 @@ async def sync_patient(fhir_patient_id: str, db: AsyncSession) -> Patient:
     allergies   = await fhir.get_allergies(fhir_patient_id)
     encounters  = await fhir.get_encounters_for_patient(fhir_patient_id)
 
-    entities = (
+    raw_entities = (
         [_condition_to_entity(patient.id, r) for r in conditions]
         + [_medication_to_entity(patient.id, r) for r in medications]
         + [_observation_to_entity(patient.id, r) for r in labs]
         + [_allergy_to_entity(patient.id, r) for r in allergies]
         + [_encounter_to_entity(patient.id, r) for r in encounters]
     )
+
+    # Deduplicate: FHIR may have duplicate resources if seed was run multiple times.
+    # Keep the first occurrence of each (entity_type, code, display, onset_date) combo.
+    seen: set[tuple] = set()
+    entities = []
+    for e in raw_entities:
+        key = (e.entity_type, e.code or "", e.display or "", e.onset_date or "")
+        if key not in seen:
+            seen.add(key)
+            entities.append(e)
+
     db.add_all(entities)
     await db.commit()
     await db.refresh(patient)
@@ -222,6 +366,26 @@ async def get_patient_summary(fhir_patient_id: str, db: AsyncSession) -> dict | 
             "code":    e.code,
         })
 
+    # Sort labs by date ascending so frontend can render time series correctly
+    labs = sorted(by_type.get("lab", []), key=lambda x: x["date"] or "")
+
+    # Build lab trends: group by display name, collect (date, value) pairs
+    lab_trends = {}
+    for lab in labs:
+        name = lab["display"]
+        if name not in lab_trends:
+            lab_trends[name] = []
+        lab_trends[name].append({"date": lab["date"], "value": lab["value"]})
+
+    # Only include labs with 2+ readings in trends summary (for AI context)
+    trend_summary = {
+        name: readings
+        for name, readings in lab_trends.items()
+        if len(readings) >= 2
+    }
+
+    risk = _compute_risk(ents)
+
     return {
         "fhir_id":    patient.fhir_id,
         "full_name":  patient.full_name,
@@ -231,9 +395,11 @@ async def get_patient_summary(fhir_patient_id: str, db: AsyncSession) -> dict | 
         "synced_at":  patient.synced_at.isoformat() if patient.synced_at else None,
         "conditions":  by_type.get("condition", []),
         "medications": by_type.get("medication", []),
-        "labs":        by_type.get("lab", []),
+        "labs":        labs,
+        "lab_trends":  trend_summary,
         "allergies":   by_type.get("allergy", []),
         "encounters":  by_type.get("encounter", []),
+        "risk":        risk,
     }
 
 
@@ -276,5 +442,6 @@ async def list_patients(db: AsyncSession) -> list[dict]:
                 "labs":        sum(1 for e in ents if e.entity_type == "lab"),
                 "allergies":   sum(1 for e in ents if e.entity_type == "allergy"),
             },
+            "risk": _compute_risk(ents),
         })
     return summaries

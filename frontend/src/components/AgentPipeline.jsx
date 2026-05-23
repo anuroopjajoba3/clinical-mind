@@ -42,6 +42,14 @@ const AGENTS = [
     completeMsg: 'Analysis complete',
   },
   {
+    key: 'drug_interaction',
+    label: 'Drug Interaction Agent',
+    icon: '💊',
+    description: "Checks recommendations against patient's current medications",
+    runningMsg: 'Checking interactions…',
+    completeMsg: 'Interaction check complete',
+  },
+  {
     key: 'synthesize',
     label: 'Synthesize Agent',
     icon: '📋',
@@ -101,7 +109,6 @@ function AgentCard({ agent, status, index }) {
   const isComplete = status === 'complete'
   const isError    = status === 'error'
   const isSkipped  = status === 'skipped'
-  const isActive   = isRunning || isComplete
 
   const borderClass = isRunning  ? 'border-blue-400 card-glow-blue'
     : isComplete ? 'border-emerald-400 card-glow-green'
@@ -164,11 +171,6 @@ function AgentCard({ agent, status, index }) {
           : isSkipped  ? 'Skipped (no patient)'
           : isError    ? 'Error occurred'
           : 'Waiting…'}
-      </div>
-
-      {/* Step number */}
-      <div className="absolute top-4 right-4 -mt-0.5 opacity-0">
-        {/* reserved */}
       </div>
     </div>
   )

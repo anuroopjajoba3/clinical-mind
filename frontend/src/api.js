@@ -44,15 +44,21 @@ export const authAPI = {
 
 // Research helpers
 export const researchAPI = {
-  start:   (question, fhir_patient_id = null) =>
-    api.post('/research', { question, ...(fhir_patient_id ? { fhir_patient_id } : {}) }),
+  start: (question, fhir_patient_id = null, session_history = null) =>
+    api.post('/research', {
+      question,
+      ...(fhir_patient_id ? { fhir_patient_id } : {}),
+      ...(session_history?.length ? { session_history } : {}),
+    }),
   status:  (job_id)   => api.get(`/status/${job_id}`),
   history: ()         => api.get('/history'),
 }
 
-// SSE stream factory
-export async function createJobStream(job_id, onData, onError) {
-  const base  = await getApiBase()
+// SSE stream factory — synchronous so streamRef.current holds the actual EventSource,
+// not a Promise (which would make stopStream's .close() call fail silently).
+// getCurrentApiBase() uses the cached value from a prior researchAPI.start() call.
+export function createJobStream(job_id, onData, onError) {
+  const base  = getCurrentApiBase()
   const token = sessionStorage.getItem('cm_token')
   const url   = `${base}/stream/${job_id}${token ? `?token=${token}` : ''}`
   const es    = new EventSource(url)

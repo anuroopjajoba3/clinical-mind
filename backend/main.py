@@ -108,9 +108,14 @@ class TokenResponse(BaseModel):
     user_name: str
 
 
+class SessionEntry(BaseModel):
+    question: str
+    answer: str  # short summary of the previous response
+
 class ResearchRequest(BaseModel):
     question: str = Field(..., min_length=10, max_length=500)
     fhir_patient_id: Optional[str] = None    # attach patient context from FHIR
+    session_history: Optional[list[SessionEntry]] = None  # prior Q&A in this session
 
 
 class ResearchResponse(BaseModel):
@@ -209,10 +214,19 @@ async def start_research(
     # Track pipeline start
     pipeline_runs_total.labels(status="started").inc()
 
+    # Serialise session history for Celery (plain dicts, JSON-safe)
+    history_payload = (
+        [{"question": e.question, "answer": e.answer} for e in body.session_history]
+        if body.session_history else None
+    )
+
     # Dispatch to Celery
     run_pipeline.apply_async(
         args=[job_id, body.question],
-        kwargs={"fhir_patient_id": body.fhir_patient_id},
+        kwargs={
+            "fhir_patient_id": body.fhir_patient_id,
+            "session_history": history_payload,
+        },
         task_id=job_id,
     )
 
