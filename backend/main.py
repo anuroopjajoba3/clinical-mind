@@ -29,6 +29,7 @@ from database import get_db, create_tables, Job, User
 import fhir_client as fhir
 import patient_memory as memory
 import workspace as ws
+from cds_hooks import router as cds_router
 from auth import (
     get_current_user, get_optional_user,
     get_user_by_email, create_user, authenticate_user,
@@ -91,6 +92,8 @@ app.add_middleware(
 
 # Auto-instrument all routes (request count, latency, status codes)
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+
+app.include_router(cds_router)
 
 
 

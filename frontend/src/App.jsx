@@ -13,6 +13,7 @@ import SearchHistory   from './components/SearchHistory'
 import PatientSelector    from './components/PatientSelector'
 import PatientDetailPanel from './components/PatientDetailPanel'
 import ComparisonPanel    from './components/ComparisonPanel'
+import CDSHooksDemo       from './components/CDSHooksDemo'
 import { AnatomyBackground } from './components/AnatomyBackground'
 
 // ── constants ────────────────────────────────────────────────────
@@ -819,8 +820,11 @@ export default function App() {
         </AnimatePresence>
       </div>
 
+      {/* CDS Hooks demo strip */}
+      <CDSHooksDemo />
+
       {/* Footer */}
-      <footer className="relative z-10 mt-20 border-t border-slate-200/60 bg-white/40 backdrop-blur py-6">
+      <footer className="relative z-10 mt-8 border-t border-slate-200/60 bg-white/40 backdrop-blur py-6">
         <div className="max-w-7xl mx-auto px-6 flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-slate-500">ClinicalMind v3 · FastAPI · LangGraph · FHIR R4 · Anthropic Claude</p>
           <p className="text-xs text-slate-500">For research only · Not a substitute for clinical judgment</p>
