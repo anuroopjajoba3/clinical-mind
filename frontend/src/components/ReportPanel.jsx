@@ -43,6 +43,32 @@ function CollapsibleSection({ title, icon, defaultOpen = true, children }) {
   )
 }
 
+function ConfidenceBar({ score }) {
+  const pct = Math.max(0, Math.min(100, score))
+  const color = pct >= 75 ? 'bg-emerald-500'
+    : pct >= 50 ? 'bg-blue-500'
+    : pct >= 30 ? 'bg-amber-400'
+    : 'bg-red-400'
+  const label = pct >= 75 ? 'High confidence'
+    : pct >= 50 ? 'Moderate confidence'
+    : pct >= 30 ? 'Low confidence'
+    : 'Very low confidence'
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-700 ${color}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="text-xs text-gray-400 tabular-nums whitespace-nowrap">
+        {pct}% · {label}
+      </span>
+    </div>
+  )
+}
+
 function CitationChip({ refNum, sourcesIndex, onCiteClick }) {
   const [hovered, setHovered] = React.useState(false)
   const src = sourcesIndex?.[String(refNum)]
@@ -117,8 +143,15 @@ function RecommendationCard({ rec, index, sourcesIndex, onCiteClick }) {
         {rec.rationale && (
           <p className="text-xs text-gray-500 ml-9 leading-relaxed">{rec.rationale}</p>
         )}
+
+        {rec.confidence_score != null && (
+          <div className="ml-9 mt-2.5">
+            <ConfidenceBar score={rec.confidence_score} />
+          </div>
+        )}
+
         {rec.source_refs?.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2.5 ml-9">
+          <div className="flex flex-wrap gap-1 mt-2 ml-9">
             {rec.source_refs.map((ref) => (
               <CitationChip
                 key={ref}

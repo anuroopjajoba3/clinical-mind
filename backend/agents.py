@@ -89,6 +89,78 @@ def _strip_json(raw: str) -> str:
     return raw.strip()
 
 
+# Evidence level → base score mapping (Oxford CEBM ladder)
+_LEVEL_BASE = {"1A": 95, "1B": 82, "2A": 68, "2B": 55, "3": 40, "4": 25}
+
+
+def _compute_confidence(
+    recommendations: list[dict],
+    summaries: list[dict],
+    contradictions: list[dict],
+) -> list[dict]:
+    """
+    Annotate each recommendation with a confidence_score (0–100) derived from
+    three signals already present in the pipeline state:
+
+      1. Evidence level of cited sources  — 1A anchors at 95, 4 at 25
+      2. Number of distinct source refs   — more refs add up to +12 pts (log scale)
+      3. Contradictions on cited sources  — each conflict touching a cited source
+                                            subtracts 8 pts (major) or 4 pts (minor)
+
+    No LLM call — pure arithmetic over data already computed by earlier agents.
+    """
+    # Build a set of source indices (1-based) that are involved in contradictions,
+    # keyed by severity so we can apply different penalties.
+    conflict_indices: dict[int, str] = {}   # index → "major" | "minor"
+    for c in contradictions or []:
+        severity = c.get("severity", "minor")
+        for ref in c.get("source_refs", []):
+            try:
+                idx = int(ref)
+                # Keep the worst severity if a source appears in multiple conflicts
+                if conflict_indices.get(idx) != "major":
+                    conflict_indices[idx] = severity
+            except (ValueError, TypeError):
+                pass
+
+    annotated = []
+    for rec in recommendations:
+        refs = [int(r) for r in (rec.get("source_refs") or []) if str(r).isdigit()]
+
+        if not refs:
+            # No citations — use the rec's own evidence_level as sole signal
+            base = _LEVEL_BASE.get(rec.get("evidence_level", "4"), 25)
+            score = max(10, base - 15)      # penalise uncited recommendations
+        else:
+            # Average the base scores of all cited sources
+            levels = []
+            for idx in refs:
+                if 1 <= idx <= len(summaries):
+                    lvl = summaries[idx - 1].get("evidence_level", "4")
+                    levels.append(_LEVEL_BASE.get(lvl, 25))
+            base = sum(levels) / len(levels) if levels else _LEVEL_BASE.get(
+                rec.get("evidence_level", "4"), 25
+            )
+
+            # Bonus for multiple independent citations (log scale, cap +12)
+            import math
+            multi_bonus = min(12, round(math.log(len(refs) + 1, 2) * 6))
+
+            # Contradiction penalty for cited sources
+            penalty = sum(
+                8 if conflict_indices.get(idx) == "major" else 4
+                for idx in refs
+                if idx in conflict_indices
+            )
+
+            score = base + multi_bonus - penalty
+
+        rec = {**rec, "confidence_score": max(5, min(100, round(score)))}
+        annotated.append(rec)
+
+    return annotated
+
+
 # ─── Agent 0a: Patient Memory Agent ─────────────────────────────────────────
 
 async def fhir_context_agent(state: ClinicalState) -> ClinicalState:
@@ -825,6 +897,14 @@ Generate a comprehensive structured clinical evidence report."""
             "limitations": "Automated synthesis unavailable.",
             "grade_assessment": "Unable to assess",
         }
+
+    # Annotate each recommendation with a confidence score before persisting.
+    if report.get("recommendations"):
+        report["recommendations"] = _compute_confidence(
+            report["recommendations"],
+            state.get("summaries") or [],
+            state.get("contradictions") or [],
+        )
 
     # Build a sources_index so the frontend can resolve [1], [2] citation refs
     # back to real paper metadata without any extra lookups.

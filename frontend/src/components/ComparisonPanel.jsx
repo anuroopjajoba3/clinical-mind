@@ -2,6 +2,22 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 
+function ConfidenceBar({ score }) {
+  const pct = Math.max(0, Math.min(100, score))
+  const color = pct >= 75 ? 'bg-emerald-500'
+    : pct >= 50 ? 'bg-blue-500'
+    : pct >= 30 ? 'bg-amber-400'
+    : 'bg-red-400'
+  return (
+    <div className="flex items-center gap-2 mt-1.5">
+      <div className="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-xs text-gray-400 tabular-nums">{pct}%</span>
+    </div>
+  )
+}
+
 const LEVEL_COLORS = {
   '1A': 'bg-emerald-50 text-emerald-700 border-emerald-200',
   '1B': 'bg-blue-50 text-blue-700 border-blue-200',
@@ -83,6 +99,9 @@ function BottomLineCard({ label, bottomLine, recs, side }) {
                     )}
                     <p className="text-xs text-gray-700 leading-relaxed">{rec.recommendation}</p>
                   </div>
+                  {rec.confidence_score != null && (
+                    <ConfidenceBar score={rec.confidence_score} />
+                  )}
                 </div>
               ))}
             </div>
