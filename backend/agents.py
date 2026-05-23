@@ -133,15 +133,15 @@ async def fhir_context_agent(state: ClinicalState) -> ClinicalState:
         ]
         # Most-recent value per lab for point-in-time context
         latest_labs: dict[str, dict] = {}
-        for l in summary.get("labs", []):
-            name = l.get("display", "")
-            if name and l.get("value"):
+        for lab in summary.get("labs", []):
+            name = lab.get("display", "")
+            if name and lab.get("value"):
                 # labs are sorted ascending by date — last one wins
-                latest_labs[name] = l
+                latest_labs[name] = lab
 
         labs = [
-            f"{name}: {l['value']} ({l['date']})"
-            for name, l in latest_labs.items()
+            f"{name}: {entry['value']} ({entry['date']})"
+            for name, entry in latest_labs.items()
         ]
 
         # Build lab trend strings for AI context (e.g. "HbA1c: 6.2% → 6.9% → 7.4% → 7.8%")
@@ -792,17 +792,30 @@ Evidence from {len(state['summaries'])} sources ({sum(1 for s in state['summarie
 Generate a comprehensive structured clinical evidence report."""
 
     llm = get_llm()
-    try:
-        response = await llm.ainvoke([
-            SystemMessage(content=REPORT_SYSTEM),
-            HumanMessage(content=prompt),
-        ])
-        report = json.loads(_strip_json(response.content))
-        # Merge consistency note if set by contradiction agent
-        if state.get("report", {}).get("consistency_note"):
-            report["consistency_note"] = state["report"]["consistency_note"]
-    except Exception as e:
-        print(f"Synthesize error: {e}")
+
+    # Retry up to 3 times with exponential backoff — handles transient API rate
+    # limits and occasional malformed JSON responses from the model.
+    report = None
+    last_error = None
+    for attempt in range(3):
+        try:
+            if attempt > 0:
+                await asyncio.sleep(2 ** attempt)   # 2s, 4s
+            response = await llm.ainvoke([
+                SystemMessage(content=REPORT_SYSTEM),
+                HumanMessage(content=prompt),
+            ])
+            report = json.loads(_strip_json(response.content))
+            # Merge consistency note if set by contradiction agent
+            if state.get("report", {}).get("consistency_note"):
+                report["consistency_note"] = state["report"]["consistency_note"]
+            break   # success — exit retry loop
+        except Exception as e:
+            last_error = e
+            print(f"Synthesize error (attempt {attempt + 1}/3): {e}")
+
+    if report is None:
+        print(f"Synthesize failed after 3 attempts: {last_error}")
         report = {
             "background": f"Clinical synthesis for: {state['question']}",
             "key_interventions": [],

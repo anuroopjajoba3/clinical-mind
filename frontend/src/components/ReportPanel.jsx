@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 
 const LEVEL_COLORS = {
   '1A': 'text-emerald-700 bg-emerald-50 border-emerald-200',
@@ -9,34 +10,67 @@ const LEVEL_COLORS = {
   '4':  'text-gray-600 bg-gray-100 border-gray-200',
 }
 
-function Section({ title, icon, children }) {
+const LEVEL_LEFT_BORDER = {
+  '1A': 'border-l-4 border-l-emerald-500',
+  '1B': 'border-l-4 border-l-blue-500',
+  '2A': 'border-l-4 border-l-yellow-400',
+  '2B': 'border-l-4 border-l-orange-400',
+  '3':  'border-l-4 border-l-purple-300',
+  '4':  'border-l-4 border-l-gray-300',
+}
+
+function CollapsibleSection({ title, icon, defaultOpen = true, children }) {
+  const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="mb-6">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-lg">{icon}</span>
-        <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wider">{title}</h3>
-      </div>
-      {children}
+    <div className="mb-4">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between gap-2 mb-2 group"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-base">{icon}</span>
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider group-hover:text-gray-700 transition-colors">
+            {title}
+          </h3>
+        </div>
+        {open
+          ? <ChevronUp className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+          : <ChevronDown className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+        }
+      </button>
+      {open && children}
     </div>
   )
 }
 
-function RecommendationRow({ rec, index, onCiteClick }) {
-  const levelClass = LEVEL_COLORS[rec.evidence_level] || LEVEL_COLORS['4']
+function RecommendationCard({ rec, index, onCiteClick }) {
+  const levelClass    = LEVEL_COLORS[rec.evidence_level] || LEVEL_COLORS['4']
+  const leftBorder    = LEVEL_LEFT_BORDER[rec.evidence_level] || LEVEL_LEFT_BORDER['4']
+  const isHighEvidence = ['1A', '1B'].includes(rec.evidence_level)
+
   return (
-    <div className="flex gap-3 p-4 rounded-lg bg-gray-50 border border-gray-100 mb-2">
-      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-100 text-blue-600
-                      flex items-center justify-center text-sm font-bold">
-        {index + 1}
-      </div>
-      <div className="flex-1">
-        <p className="text-sm text-gray-900 font-medium mb-1">{rec.recommendation}</p>
+    <div className={`rounded-xl border border-gray-200 bg-white mb-3 overflow-hidden shadow-sm
+                     hover:shadow-md transition-all duration-200 ${leftBorder}`}>
+      <div className="p-4">
+        <div className="flex items-start gap-3 mb-2">
+          <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
+                           ${isHighEvidence ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+            {index + 1}
+          </div>
+          <p className={`flex-1 leading-relaxed ${isHighEvidence ? 'text-sm font-semibold text-gray-900' : 'text-sm font-medium text-gray-800'}`}>
+            {rec.recommendation}
+          </p>
+          {rec.evidence_level && (
+            <span className={`flex-shrink-0 self-start text-xs font-bold px-2 py-0.5 rounded border ${levelClass}`}>
+              {rec.evidence_level}
+            </span>
+          )}
+        </div>
         {rec.rationale && (
-          <p className="text-xs text-gray-500">{rec.rationale}</p>
+          <p className="text-xs text-gray-500 ml-9 leading-relaxed">{rec.rationale}</p>
         )}
-        {/* Citation badges */}
         {rec.source_refs?.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
+          <div className="flex flex-wrap gap-1 mt-2.5 ml-9">
             {rec.source_refs.map((ref) => (
               <button
                 key={ref}
@@ -52,26 +86,16 @@ function RecommendationRow({ rec, index, onCiteClick }) {
           </div>
         )}
       </div>
-      {rec.evidence_level && (
-        <span className={`
-          flex-shrink-0 self-start text-xs font-semibold px-2 py-0.5 rounded border
-          ${levelClass}
-        `}>
-          {rec.evidence_level}
-        </span>
-      )}
     </div>
   )
 }
 
 function InterventionTag({ item }) {
-  const levelClass = LEVEL_COLORS[item.evidence_level] || LEVEL_COLORS['4']
+  const levelClass  = LEVEL_COLORS[item.evidence_level] || LEVEL_COLORS['4']
+  const leftBorder  = LEVEL_LEFT_BORDER[item.evidence_level] || LEVEL_LEFT_BORDER['4']
   return (
-    <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 border border-gray-100 mb-2">
-      <span className={`
-        flex-shrink-0 text-xs font-semibold px-2 py-0.5 rounded border mt-0.5
-        ${levelClass}
-      `}>
+    <div className={`flex items-start gap-3 p-3 rounded-lg bg-gray-50 border border-gray-100 mb-2 ${leftBorder}`}>
+      <span className={`flex-shrink-0 text-xs font-semibold px-2 py-0.5 rounded border mt-0.5 ${levelClass}`}>
         {item.evidence_level || '?'}
       </span>
       <div>
@@ -148,9 +172,7 @@ Generated by ClinicalMind — AI Clinical Evidence Synthesis
             </svg>
             Clinical Evidence Report
           </h2>
-          <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
-            {question}
-          </p>
+          <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{question}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -181,71 +203,77 @@ Generated by ClinicalMind — AI Clinical Evidence Synthesis
 
       {/* Body */}
       <div className="p-6">
-        {/* Clinical Bottom Line */}
+
+        {/* ── CLINICAL BOTTOM LINE — hero treatment ── */}
         {report.clinical_bottom_line && (
-          <div className="mb-6 p-4 rounded-xl bg-blue-50 border border-blue-200">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-blue-600">⚡</span>
-              <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider">
+          <div className="mb-7 p-5 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 shadow-md">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-white text-lg">⚡</span>
+              <span className="text-xs font-bold text-blue-200 uppercase tracking-widest">
                 Clinical Bottom Line
               </span>
             </div>
-            <p className="text-sm text-gray-900 font-medium leading-relaxed">
+            <p className="text-base text-white font-semibold leading-relaxed">
               {report.clinical_bottom_line}
             </p>
           </div>
         )}
 
-        {/* Background */}
-        {report.background && (
-          <Section title="Background" icon="📖">
-            <p className="text-sm text-gray-700 leading-relaxed">{report.background}</p>
-          </Section>
+        {/* ── RECOMMENDATIONS — always visible, prominent cards ── */}
+        {report.recommendations?.length > 0 && (
+          <div className="mb-5">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-base">✅</span>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Recommendations
+              </h3>
+              <span className="ml-auto text-xs text-gray-400">{report.recommendations.length} total</span>
+            </div>
+            {report.recommendations.map((rec, i) => (
+              <RecommendationCard key={i} rec={rec} index={i} onCiteClick={onCiteClick} />
+            ))}
+          </div>
         )}
 
-        {/* Key Interventions */}
+        {/* ── KEY INTERVENTIONS ── */}
         {report.key_interventions?.length > 0 && (
-          <Section title="Key Interventions" icon="💊">
+          <CollapsibleSection title="Key Interventions" icon="💊" defaultOpen={true}>
             {report.key_interventions.map((item, i) => (
               <InterventionTag key={i} item={item} />
             ))}
-          </Section>
+          </CollapsibleSection>
         )}
 
-        {/* Evidence Summary */}
+        {/* ── BACKGROUND — collapsed by default (verbose, already synthesised above) ── */}
+        {report.background && (
+          <CollapsibleSection title="Background" icon="📖" defaultOpen={false}>
+            <p className="text-sm text-gray-700 leading-relaxed">{report.background}</p>
+          </CollapsibleSection>
+        )}
+
+        {/* ── EVIDENCE SUMMARY — collapsed by default ── */}
         {report.evidence_summary && (
-          <Section title="Evidence Summary" icon="📊">
-            <div className="prose prose-sm max-w-none">
+          <CollapsibleSection title="Evidence Summary" icon="📊" defaultOpen={false}>
+            <div>
               {report.evidence_summary.split('\n').filter(Boolean).map((para, i) => (
                 <p key={i} className="text-sm text-gray-700 leading-relaxed mb-2">{para}</p>
               ))}
             </div>
-          </Section>
+          </CollapsibleSection>
         )}
 
-        {/* Recommendations */}
-        {report.recommendations?.length > 0 && (
-          <Section title="Recommendations" icon="✅">
-            {report.recommendations.map((rec, i) => (
-              <RecommendationRow key={i} rec={rec} index={i} onCiteClick={onCiteClick} />
-            ))}
-          </Section>
-        )}
-
-        {/* Limitations */}
+        {/* ── LIMITATIONS ── */}
         {report.limitations && (
-          <Section title="Limitations" icon="⚠️">
+          <CollapsibleSection title="Limitations" icon="⚠️" defaultOpen={false}>
             <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
               <p className="text-sm text-amber-900 leading-relaxed">{report.limitations}</p>
             </div>
-          </Section>
+          </CollapsibleSection>
         )}
 
         {/* Footer */}
         <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
-          <p className="text-xs text-gray-400">
-            Generated by ClinicalMind · AI Clinical Evidence Synthesis
-          </p>
+          <p className="text-xs text-gray-400">Generated by ClinicalMind · AI Clinical Evidence Synthesis</p>
           <p className="text-xs text-gray-400">
             {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
           </p>

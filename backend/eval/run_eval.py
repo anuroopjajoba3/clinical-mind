@@ -36,7 +36,6 @@ import argparse
 import httpx
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 # ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -297,8 +296,10 @@ def write_markdown(results: list[dict], run_at: str):
 
         s_score = r["structural"]["score"] if r.get("structural") else "—"
         q_score = r["quality"]["score"]    if r.get("quality")     else "—"
-        if isinstance(s_score, int): struct_scores.append(s_score)
-        if isinstance(q_score, int): qual_scores.append(q_score)
+        if isinstance(s_score, int):
+            struct_scores.append(s_score)
+        if isinstance(q_score, int):
+            qual_scores.append(q_score)
 
         s_emoji = "✅" if isinstance(s_score, int) and s_score >= 80 else ("⚠️" if isinstance(s_score, int) and s_score >= 60 else "❌")
         q_emoji = "✅" if isinstance(q_score, int) and q_score >= 80 else ("⚠️" if isinstance(q_score, int) and q_score >= 60 else ("❌" if isinstance(q_score, int) else ""))

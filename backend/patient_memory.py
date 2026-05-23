@@ -258,9 +258,7 @@ def _compute_risk(ents: list) -> dict:
         if e.entity_type == "medication" and e.status == "active"
     }
 
-    has_ckd      = any("kidney" in c or "renal" in c or "ckd" in c or "nephrop" in c for c in active_conditions)
-    has_diabetes = any("diabetes" in c or "t2dm" in c or "type 2" in c for c in active_conditions)
-    has_hf       = any("heart failure" in c or "cardiac failure" in c for c in active_conditions)
+    has_ckd = any("kidney" in c or "renal" in c or "ckd" in c or "nephrop" in c for c in active_conditions)
 
     _ace_arb_names = ["lisinopril", "enalapril", "ramipril", "perindopril",
                       "losartan", "valsartan", "irbesartan", "candesartan", "olmesartan"]

@@ -135,6 +135,7 @@ function ContradictionAlert({ contradictions }) {
 export default function App() {
   const [question, setQuestion]               = useState('')
   const [fhirPatientId, setFhirPatientId]     = useState(null)
+  const [selectedPatient, setSelectedPatient] = useState(null)   // full patient object for suggestions
   const [jobStatus, setJobStatus]             = useState(null)
   const [isSubmitting, setIsSubmitting]       = useState(false)
   const [error, setError]                     = useState(null)
@@ -225,6 +226,54 @@ export default function App() {
     }
   }
 
+  const handlePatientSelected = (patient) => {
+    setSelectedPatient(patient)
+    setFhirPatientId(patient?.fhir_id ?? null)
+  }
+
+  // Derive smart question suggestions from the patient's active risk flags
+  const smartSuggestions = (() => {
+    if (!selectedPatient?.risk?.flags?.length) return []
+    const flags   = selectedPatient.risk.flags
+    const conds   = selectedPatient.active_conditions || []
+    const name    = selectedPatient.full_name?.split(' ')[0] || 'this patient'
+
+    const suggestions = []
+
+    // eGFR / CKD flags
+    const egfrFlag = flags.find(f => /eGFR/i.test(f))
+    if (egfrFlag) {
+      const match = egfrFlag.match(/eGFR\s*([\d.]+)/i)
+      const egfr  = match ? match[1] : '42'
+      suggestions.push(`What is the evidence for slowing CKD progression in T2DM with eGFR ${egfr}?`)
+    }
+
+    // HbA1c flags
+    const hba1cFlag = flags.find(f => /HbA1c/i.test(f))
+    if (hba1cFlag) {
+      suggestions.push("What is the optimal HbA1c target for elderly patients with type 2 diabetes and CKD?")
+    }
+
+    // Drug interaction / medication flag
+    const medFlag = flags.find(f => /metformin|NSAID|ACE|ARB|statin/i.test(f))
+    if (medFlag) {
+      suggestions.push(`What are the risks of ${medFlag.match(/metformin|NSAID|ACE inhibitor|ARB|statin/i)?.[0] || 'this medication'} in patients with reduced kidney function?`)
+    }
+
+    // NT-proBNP / heart failure
+    const bnpFlag = flags.find(f => /NT-proBNP|heart failure/i.test(f))
+    if (bnpFlag) {
+      suggestions.push("What does elevated NT-proBNP indicate and how should it be managed in outpatient CKD?")
+    }
+
+    // Generic fallback from conditions if no specific flags matched
+    if (suggestions.length === 0 && conds.length > 0) {
+      suggestions.push(`What is the best evidence-based management of ${conds[0]} in 2024?`)
+    }
+
+    return suggestions.slice(0, 3)
+  })()
+
   const handleReset = () => { stopStream(); setJobStatus(null); setError(null); setIsSubmitting(false); setQuestion('') }
   const handleLogout = () => { sessionStorage.removeItem('cm_token'); setUser(null) }
   const loadHistory = async (job_id) => {
@@ -311,176 +360,173 @@ export default function App() {
           </div>
         </motion.header>
 
-        {/* ── SEARCH HERO ─────────────────────────────────────── */}
+        {/* ── HOMEPAGE DASHBOARD ─────────────────────────────── */}
         <AnimatePresence>
           {!jobStatus && (
             <motion.div
-              className="max-w-4xl mx-auto text-center mb-16"
+              className="mb-10"
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.6 }}
+              exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.5 }}
             >
-              {/* Badge */}
-              <motion.div
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full border border-blue-100 mb-8"
-                initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2 }}
-              >
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                <span className="text-sm text-slate-700">PubMed · ClinicalTrials.gov · FHIR R4 · Claude AI</span>
-              </motion.div>
+              {/* Two-column layout: patients left, search right */}
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
 
-              {/* Headline */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.7 }}
-              >
-                <h2 className="text-5xl font-extrabold text-slate-900 mb-3 tracking-tight leading-tight">
-                  Evidence-Based Answers
-                </h2>
-                <h2 className="text-5xl font-extrabold mb-6 tracking-tight">
-                  <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    in Seconds
-                  </span>
-                </h2>
-                <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-                  Ask a clinical question. ClinicalMind extracts PICO, searches PubMed and
-                  ClinicalTrials.gov, detects contradictions, and synthesises a clinical report.
-                </p>
-              </motion.div>
-
-              {/* Search box */}
-              <motion.form
-                onSubmit={handleSubmit}
-                className="max-w-3xl mx-auto mb-4"
-                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.45 }}
-              >
-                <div className="relative group">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
-                  <div className="relative bg-white rounded-2xl shadow-lg border border-slate-200 p-2 hover:shadow-xl transition-shadow">
-                    <div className="flex items-start gap-3 px-4 pt-3 pb-1">
-                      <Search className="w-5 h-5 text-slate-400 mt-1 shrink-0" />
-                      <textarea
-                        value={question}
-                        onChange={e => setQuestion(e.target.value)}
-                        placeholder="e.g. What is the efficacy of metformin for type 2 diabetes prevention?"
-                        rows={2}
-                        className="flex-1 bg-transparent text-slate-900 placeholder-slate-400 resize-none focus:outline-none leading-relaxed text-sm"
-                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between px-4 py-2">
-                      <p className="text-xs text-slate-400">Enter to search · Shift+Enter for newline</p>
-                      <motion.button
-                        type="submit"
-                        disabled={!question.trim() || isSubmitting}
-                        className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-blue-500 to-purple-600
-                                   text-white text-sm font-medium rounded-xl shadow-sm disabled:opacity-50"
-                        whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                      >
-                        {isSubmitting ? <><Spinner />Analysing…</> : <>Research <ChevronRight className="w-4 h-4" /></>}
-                      </motion.button>
-                    </div>
+                {/* ── LEFT: Patient Dashboard Panel ── */}
+                <motion.div
+                  className="lg:col-span-2"
+                  initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Patient Dashboard</p>
                   </div>
-                </div>
-              </motion.form>
+                  <PatientSelector
+                    onPatientSelected={handlePatientSelected}
+                    onViewDetail={setDetailPatientId}
+                  />
+                </motion.div>
 
-              {/* Session memory indicator */}
-              {(() => {
-                const key = fhirPatientId || '__global__'
-                const history = sessionMemory[key] || []
-                return history.length > 0 ? (
-                  <motion.div
-                    className="max-w-3xl mx-auto mb-3 flex items-center justify-between px-4 py-2.5 bg-indigo-50 border border-indigo-200 rounded-xl"
-                    initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-                  >
-                    <div className="flex items-center gap-2 text-xs text-indigo-700">
-                      <Brain className="w-3.5 h-3.5" />
-                      <span className="font-medium">Session memory active</span>
-                      <span className="text-indigo-500">· {history.length} prior {history.length === 1 ? 'query' : 'queries'} in context</span>
+                {/* ── RIGHT: Search + suggestions ── */}
+                <motion.div
+                  className="lg:col-span-3"
+                  initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.25 }}
+                >
+                  {/* Compact headline */}
+                  <div className="mb-5">
+                    <h2 className="text-3xl font-extrabold text-slate-900 leading-tight">
+                      Evidence-Based Answers
+                      <span className="ml-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        in Seconds
+                      </span>
+                    </h2>
+                    <p className="text-sm text-slate-500 mt-1">
+                      Select a patient, then ask a clinical question.
+                    </p>
+                  </div>
+
+                  {/* Search box */}
+                  <form onSubmit={handleSubmit} className="mb-3">
+                    <div className="relative group">
+                      <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
+                      <div className="relative bg-white rounded-2xl shadow-lg border border-slate-200 p-2 hover:shadow-xl transition-shadow">
+                        <div className="flex items-start gap-3 px-4 pt-3 pb-1">
+                          <Search className="w-5 h-5 text-slate-400 mt-1 shrink-0" />
+                          <textarea
+                            value={question}
+                            onChange={e => setQuestion(e.target.value)}
+                            placeholder="e.g. What is the efficacy of metformin for type 2 diabetes prevention?"
+                            rows={2}
+                            className="flex-1 bg-transparent text-slate-900 placeholder-slate-400 resize-none focus:outline-none leading-relaxed text-sm"
+                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between px-4 py-2">
+                          <p className="text-xs text-slate-400">Enter to search · Shift+Enter for newline</p>
+                          <motion.button
+                            type="submit"
+                            disabled={!question.trim() || isSubmitting}
+                            className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-blue-500 to-purple-600
+                                       text-white text-sm font-medium rounded-xl shadow-sm disabled:opacity-50"
+                            whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                          >
+                            {isSubmitting ? <><Spinner />Analysing…</> : <>Research <ChevronRight className="w-4 h-4" /></>}
+                          </motion.button>
+                        </div>
+                      </div>
                     </div>
-                    <button
-                      onClick={() => setSessionMemory(m => ({ ...m, [key]: [] }))}
-                      className="text-xs text-indigo-400 hover:text-indigo-700 transition-colors"
-                    >
-                      Clear
-                    </button>
-                  </motion.div>
-                ) : null
-              })()}
+                  </form>
 
-              {/* Patient selector */}
-              <motion.div
-                className="max-w-3xl mx-auto mb-8"
-                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.55 }}
-              >
-                <PatientSelector
-                  onPatientSelected={setFhirPatientId}
-                  onViewDetail={setDetailPatientId}
-                />
-              </motion.div>
+                  {/* Session memory indicator */}
+                  {(() => {
+                    const key = fhirPatientId || '__global__'
+                    const history = sessionMemory[key] || []
+                    return history.length > 0 ? (
+                      <motion.div
+                        className="mb-3 flex items-center justify-between px-4 py-2.5 bg-indigo-50 border border-indigo-200 rounded-xl"
+                        initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+                      >
+                        <div className="flex items-center gap-2 text-xs text-indigo-700">
+                          <Brain className="w-3.5 h-3.5" />
+                          <span className="font-medium">Session memory active</span>
+                          <span className="text-indigo-500">· {history.length} prior {history.length === 1 ? 'query' : 'queries'} in context</span>
+                        </div>
+                        <button
+                          onClick={() => setSessionMemory(m => ({ ...m, [key]: [] }))}
+                          className="text-xs text-indigo-400 hover:text-indigo-700 transition-colors"
+                        >
+                          Clear
+                        </button>
+                      </motion.div>
+                    ) : null
+                  })()}
 
-              {/* Example questions */}
-              <motion.div
-                className="max-w-3xl mx-auto text-left"
-                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-              >
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">Try an Example</p>
-                <div className="grid gap-2.5">
-                  {EXAMPLE_QUESTIONS.map((q, i) => (
-                    <motion.button
-                      key={i}
-                      onClick={() => setQuestion(q)}
-                      className="group text-left px-5 py-3.5 bg-white rounded-xl border border-slate-200
-                                 hover:border-blue-300 hover:shadow-md transition-all"
-                      initial={{ opacity: 0, x: -16 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.65 + i * 0.08 }}
-                      whileHover={{ x: 4 }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-700 group-hover:text-slate-900">{q}</span>
-                        <Search className="w-3.5 h-3.5 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-3" />
-                      </div>
-                    </motion.button>
-                  ))}
-                </div>
-              </motion.div>
+                  {/* Smart question suggestions from patient risk flags */}
+                  <AnimatePresence>
+                    {smartSuggestions.length > 0 && (
+                      <motion.div
+                        className="mb-4"
+                        initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                          <span>⚡</span> Suggested from {selectedPatient?.full_name?.split(' ')[0]}'s risk flags
+                        </p>
+                        <div className="flex flex-col gap-2">
+                          {smartSuggestions.map((q, i) => (
+                            <motion.button
+                              key={i}
+                              onClick={() => setQuestion(q)}
+                              className="group text-left px-4 py-3 bg-amber-50 rounded-xl border border-amber-200
+                                         hover:border-amber-400 hover:shadow-sm transition-all"
+                              initial={{ opacity: 0, x: -12 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: i * 0.07 }}
+                              whileHover={{ x: 3 }}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-sm text-amber-900 group-hover:text-amber-950">{q}</span>
+                                <Search className="w-3 h-3 text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                              </div>
+                            </motion.button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-              {/* AI Agents preview */}
-              <motion.div
-                className="max-w-3xl mx-auto mt-16"
-                initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.9 }}
-              >
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-6 text-center">
-                  Powered by 6 Specialised AI Agents
-                </p>
-                <div className="grid grid-cols-3 gap-4">
-                  {[
-                    { icon: Activity,  label: 'FHIR Context',  desc: 'Reads patient EMR data',     color: 'bg-teal-500' },
-                    { icon: Search,    label: 'PICO + Search', desc: 'PubMed & ClinicalTrials.gov', color: 'bg-blue-500' },
-                    { icon: FileText,  label: 'Summarizer',    desc: 'Extracts insights per paper', color: 'bg-purple-500' },
-                    { icon: AlertTriangle, label: 'Contradiction', desc: 'Flags conflicting findings', color: 'bg-amber-500' },
-                    { icon: BarChart3, label: 'Synthesize',    desc: 'Builds clinical report',      color: 'bg-emerald-500' },
-                    { icon: Brain,     label: 'Claude AI',     desc: 'Anthropic sonnet model',      color: 'bg-indigo-500' },
-                  ].map((a, i) => (
+                  {/* Example questions — shown when no patient selected */}
+                  {smartSuggestions.length === 0 && (
                     <motion.div
-                      key={i}
-                      className="bg-white rounded-xl p-4 border border-slate-200 hover:border-blue-200 hover:shadow-md transition-all text-left"
-                      whileHover={{ y: -3 }}
+                      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 }}
                     >
-                      <div className={`w-9 h-9 ${a.color} rounded-lg flex items-center justify-center mb-3 shadow-sm`}>
-                        <a.icon className="w-4 h-4 text-white" />
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Try an Example</p>
+                      <div className="grid gap-2">
+                        {EXAMPLE_QUESTIONS.map((q, i) => (
+                          <motion.button
+                            key={i}
+                            onClick={() => setQuestion(q)}
+                            className="group text-left px-4 py-3 bg-white rounded-xl border border-slate-200
+                                       hover:border-blue-300 hover:shadow-md transition-all"
+                            initial={{ opacity: 0, x: -12 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.45 + i * 0.07 }}
+                            whileHover={{ x: 3 }}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-slate-700 group-hover:text-slate-900">{q}</span>
+                              <Search className="w-3 h-3 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-3" />
+                            </div>
+                          </motion.button>
+                        ))}
                       </div>
-                      <p className="text-sm font-semibold text-slate-900">{a.label}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">{a.desc}</p>
                     </motion.div>
-                  ))}
-                </div>
-              </motion.div>
+                  )}
+                </motion.div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

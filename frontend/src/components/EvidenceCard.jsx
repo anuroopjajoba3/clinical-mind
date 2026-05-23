@@ -1,12 +1,49 @@
 import React, { useState } from 'react'
 
 const LEVEL_CONFIG = {
-  '1A': { label: 'Level 1A', color: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', desc: 'Systematic Review / Meta-analysis' },
-  '1B': { label: 'Level 1B', color: 'bg-blue-50 text-blue-700 border-blue-200',         dot: 'bg-blue-500',    desc: 'High-Quality RCT' },
-  '2A': { label: 'Level 2A', color: 'bg-yellow-50 text-yellow-700 border-yellow-200',   dot: 'bg-yellow-500',  desc: 'Systematic Review of Cohorts' },
-  '2B': { label: 'Level 2B', color: 'bg-orange-50 text-orange-700 border-orange-200',   dot: 'bg-orange-500',  desc: 'Cohort Study / Low-Quality RCT' },
-  '3':  { label: 'Level 3',  color: 'bg-purple-50 text-purple-700 border-purple-200',   dot: 'bg-purple-500',  desc: 'Case-Control Study' },
-  '4':  { label: 'Level 4',  color: 'bg-gray-100 text-gray-600 border-gray-200',        dot: 'bg-gray-400',    desc: 'Expert Opinion / Case Report' },
+  '1A': {
+    label: 'Level 1A', color: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500',
+    desc: 'Systematic Review / Meta-analysis',
+    // Visual hierarchy: border color, card tint, title weight
+    borderLeft: 'border-l-4 border-l-emerald-500',
+    headerTint: 'bg-emerald-50/40',
+    titleClass: 'text-base font-bold text-gray-900',
+  },
+  '1B': {
+    label: 'Level 1B', color: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500',
+    desc: 'High-Quality RCT',
+    borderLeft: 'border-l-4 border-l-blue-500',
+    headerTint: 'bg-blue-50/30',
+    titleClass: 'text-sm font-semibold text-gray-900',
+  },
+  '2A': {
+    label: 'Level 2A', color: 'bg-yellow-50 text-yellow-700 border-yellow-200', dot: 'bg-yellow-500',
+    desc: 'Systematic Review of Cohorts',
+    borderLeft: 'border-l-4 border-l-yellow-400',
+    headerTint: '',
+    titleClass: 'text-sm font-medium text-gray-800',
+  },
+  '2B': {
+    label: 'Level 2B', color: 'bg-orange-50 text-orange-700 border-orange-200', dot: 'bg-orange-500',
+    desc: 'Cohort Study / Low-Quality RCT',
+    borderLeft: 'border-l-4 border-l-orange-400',
+    headerTint: '',
+    titleClass: 'text-sm font-medium text-gray-800',
+  },
+  '3':  {
+    label: 'Level 3', color: 'bg-purple-50 text-purple-700 border-purple-200', dot: 'bg-purple-500',
+    desc: 'Case-Control Study',
+    borderLeft: 'border-l-4 border-l-purple-300',
+    headerTint: '',
+    titleClass: 'text-sm font-normal text-gray-700',
+  },
+  '4':  {
+    label: 'Level 4', color: 'bg-gray-100 text-gray-600 border-gray-200', dot: 'bg-gray-400',
+    desc: 'Expert Opinion / Case Report',
+    borderLeft: 'border-l-4 border-l-gray-300',
+    headerTint: '',
+    titleClass: 'text-sm font-normal text-gray-600',
+  },
 }
 
 function EvidenceBadge({ level }) {
@@ -40,6 +77,7 @@ export default function EvidenceCard({ summary, index, highlighted }) {
     <div
       className={`bg-white rounded-xl border overflow-hidden shadow-sm
                  hover:shadow-md transition-all duration-300 animate-slide-up opacity-0
+                 ${levelInfo.borderLeft}
                  ${highlighted
                    ? 'border-blue-400 ring-2 ring-blue-300 ring-offset-1 shadow-blue-100'
                    : 'border-gray-200 hover:border-blue-300'
@@ -47,10 +85,10 @@ export default function EvidenceCard({ summary, index, highlighted }) {
       style={{ animationDelay: `${index * 80}ms`, animationFillMode: 'forwards' }}
     >
       {/* Header */}
-      <div className="p-5">
+      <div className={`p-5 ${levelInfo.headerTint}`}>
         <div className="flex items-start justify-between gap-4 mb-3">
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">
+            <h3 className={`leading-snug line-clamp-2 ${levelInfo.titleClass}`}>
               {summary.title}
             </h3>
             <p className="text-xs text-gray-500 mt-1">

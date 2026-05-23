@@ -23,9 +23,10 @@ from slowapi.errors import RateLimitExceeded
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Counter, Histogram
 
-from database import get_db, create_tables, Job, User, Patient
+from database import get_db, create_tables, Job, User
 import fhir_client as fhir
 import patient_memory as memory
+import workspace as ws
 from auth import (
     get_current_user, get_optional_user,
     get_user_by_email, create_user, authenticate_user,
@@ -628,7 +629,7 @@ async def purge_invalid_patients(db: AsyncSession = Depends(get_db)):
     from database import Patient as PatientModel, PatientEntity as PatientEntityModel
     result = await db.execute(
         select(PatientModel).where(
-            (PatientModel.mrn == None) | (PatientModel.mrn == "")
+            PatientModel.mrn.is_(None) | (PatientModel.mrn == "")
         )
     )
     bad = result.scalars().all()
@@ -695,6 +696,35 @@ async def sync_all_patients(db: AsyncSession = Depends(get_db)):
         except Exception as e:
             results.append({"mrn": mrn, "status": "error", "detail": str(e)})
     return {"synced": len([r for r in results if r["status"] == "ok"]), "results": results}
+
+
+# ─── Workspace / Patient Memory Graph endpoints ───────────────────────────────
+
+@app.get("/patients/{fhir_id}/insights")
+async def get_patient_insights(
+    fhir_id: str,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Return the longitudinal insight timeline for a patient — all synthesised
+    recommendations across every session, newest first.
+    """
+    insights = await ws.get_patient_insights(db, fhir_id, limit=limit)
+    return {"fhir_id": fhir_id, "insights": insights, "total": len(insights)}
+
+
+@app.get("/patients/{fhir_id}/insights/{insight_id}")
+async def get_insight_detail(
+    fhir_id: str,
+    insight_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return a single insight row with full recommendations and sources."""
+    insight = await ws.get_insight_by_id(db, insight_id)
+    if not insight:
+        raise HTTPException(status_code=404, detail="Insight not found.")
+    return insight
 
 
 if __name__ == "__main__":

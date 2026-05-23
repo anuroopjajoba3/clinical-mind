@@ -130,6 +130,30 @@ def run_pipeline(self, job_id: str, question: str, fhir_patient_id: str = None, 
         except Exception as e:
             print(f"DB persist error: {e}")
 
+        # Write insight to patient memory graph (only when a patient is in context
+        # and synthesis produced a non-empty report with no pipeline error)
+        report = final_state.get("report") or {}
+        if (
+            fhir_patient_id
+            and job_status == "complete"
+            and report.get("recommendations")
+        ):
+            try:
+                from workspace import save_insight
+                async with AsyncSessionLocal() as db:
+                    await save_insight(
+                        db,
+                        fhir_patient_id = fhir_patient_id,
+                        job_id          = job_id,
+                        question        = question,
+                        report          = report,
+                        summaries       = final_state.get("summaries") or [],
+                        contradictions  = final_state.get("contradictions") or [],
+                    )
+            except Exception as e:
+                # Non-fatal — the job result is already persisted above
+                print(f"Insight write error: {e}")
+
         return final_update
 
     return asyncio.run(_run())

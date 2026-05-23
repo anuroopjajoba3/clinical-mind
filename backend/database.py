@@ -81,6 +81,11 @@ class Patient(Base):
         cascade="all, delete-orphan",
         order_by="PatientEntity.onset_date",
     )
+    insights = relationship(
+        "PatientInsight", back_populates="patient",
+        cascade="all, delete-orphan",
+        order_by="PatientInsight.created_at.desc()",
+    )
 
 
 class PatientEntity(Base):
@@ -103,6 +108,48 @@ class PatientEntity(Base):
     created_at  = Column(DateTime, default=datetime.utcnow)
 
     patient = relationship("Patient", back_populates="entities")
+
+
+class PatientInsight(Base):
+    """
+    Persistent evidence memory — one row per completed synthesis for a patient.
+    Accumulates across sessions to form a longitudinal clinical intelligence record.
+
+    Each row captures:
+      - the clinical question that was asked
+      - the synthesised recommendations (structured JSON)
+      - which PubMed / ClinicalTrials papers supported those recommendations
+      - a summary of evidence level distribution (how many 1A, 1B, 2A … sources)
+      - drug interactions flagged in this query
+      - a link back to the originating Job row for full detail retrieval
+    """
+    __tablename__ = "patient_insights"
+
+    id                   = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id           = Column(UUID(as_uuid=True), ForeignKey("patients.id"), nullable=False, index=True)
+    job_id               = Column(UUID(as_uuid=True), ForeignKey("jobs.id"), nullable=True)
+
+    question             = Column(Text, nullable=False)
+    clinical_bottom_line = Column(Text, nullable=True)
+
+    # Full recommendations list: [{recommendation, rationale, evidence_level, source_refs}]
+    recommendations      = Column(JSON, nullable=True)
+
+    # Evidence level tally: {"1A": 2, "1B": 1, "2A": 3, ...}
+    evidence_levels      = Column(JSON, nullable=True)
+
+    # PMIDs / trial IDs that were synthesised
+    source_pmids         = Column(JSON, nullable=True)
+
+    # Drug interactions flagged: [{drug_a, drug_b, severity, description}]
+    drug_interactions    = Column(JSON, nullable=True)
+
+    # Contradiction flags from this query
+    contradictions       = Column(JSON, nullable=True)
+
+    created_at           = Column(DateTime, default=datetime.utcnow, index=True)
+
+    patient = relationship("Patient", back_populates="insights")
 
 
 # ─── Engine + Session ─────────────────────────────────────────────────────────
