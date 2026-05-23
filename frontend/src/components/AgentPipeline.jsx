@@ -57,6 +57,14 @@ const AGENTS = [
     runningMsg: 'Generating report…',
     completeMsg: 'Report ready',
   },
+  {
+    key: 'followup',
+    label: 'Follow-up Agent',
+    icon: '🔭',
+    description: 'Identifies evidence gaps and suggests next clinical questions',
+    runningMsg: 'Identifying gaps…',
+    completeMsg: 'Follow-ups ready',
+  },
 ]
 
 function StatusDot({ status }) {

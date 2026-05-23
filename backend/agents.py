@@ -925,6 +925,80 @@ Generate a comprehensive structured clinical evidence report."""
     return state
 
 
+# ─── Agent 5: Follow-up Agent ─────────────────────────────────────────────────
+
+FOLLOWUP_SYSTEM = """You are a clinical reasoning assistant. Given a completed evidence
+report, identify the 3 most clinically valuable follow-up questions a clinician should
+explore next. Focus on gaps in the evidence, unresolved contradictions, patient-specific
+considerations, and the next logical step in clinical reasoning.
+
+Return ONLY a JSON array of exactly 3 strings. Each string is a complete, specific,
+searchable clinical question. No markdown, no keys, just the array.
+
+Example: ["What is the evidence for X in patients with Y?", "How does Z compare to W for ...", "What are the long-term outcomes of ..."]
+"""
+
+
+async def followup_agent(state: ClinicalState) -> ClinicalState:
+    """
+    Generates 3 follow-up questions grounded in the evidence gaps, contradictions,
+    and limitations identified during synthesis.  Uses Haiku — fast and cheap since
+    this runs after the main report is already streamed to the frontend.
+    """
+    report = state.get("report") or {}
+    if not report.get("recommendations"):
+        # Nothing to reason from — skip silently
+        return state
+
+    pico = state.get("pico") or {}
+    limitations  = report.get("limitations", "")
+    grade        = report.get("grade_assessment", "")
+    contradictions = state.get("contradictions") or []
+    conflict_text = ""
+    if contradictions:
+        conflict_text = "Unresolved conflicts:\n" + "\n".join(
+            f"  - {c['conflict']}" for c in contradictions[:3]
+        )
+
+    prompt = f"""Original question: {state['question']}
+
+PICO: {pico.get('population', '')} / {pico.get('intervention', '')} / {pico.get('comparison', '')} / {pico.get('outcome', '')}
+
+Evidence grade: {grade}
+Limitations: {limitations}
+{conflict_text}
+
+Top recommendations (for context):
+{chr(10).join(f"  {i+1}. {r['recommendation']}" for i, r in enumerate(report.get('recommendations', [])[:3]))}
+
+Generate 3 follow-up questions."""
+
+    try:
+        llm = ChatAnthropic(
+            model="claude-haiku-4-5-20251001",
+            anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
+            max_tokens=400,
+            temperature=0.3,
+        )
+        response = await llm.ainvoke([
+            SystemMessage(content=FOLLOWUP_SYSTEM),
+            HumanMessage(content=prompt),
+        ])
+        questions = json.loads(_strip_json(response.content))
+        if isinstance(questions, list):
+            report["followup_questions"] = [q for q in questions if isinstance(q, str)][:3]
+            state["report"] = report
+    except Exception as e:
+        # Non-fatal — the main report is already complete
+        print(f"Follow-up agent error: {e}")
+
+    return state
+
+
+def route_after_synthesize(state: ClinicalState) -> str:
+    return END if state.get("error") else "followup"
+
+
 # ─── Routing ─────────────────────────────────────────────────────────────────
 
 def route_after_fhir(state: ClinicalState) -> str:
@@ -958,6 +1032,7 @@ def build_graph():
     graph.add_node("contradiction",    contradiction_agent)
     graph.add_node("drug_interaction", drug_interaction_agent)
     graph.add_node("synthesize",       synthesize_agent)
+    graph.add_node("followup",         followup_agent)
 
     graph.set_entry_point("fhir")
 
@@ -967,7 +1042,8 @@ def build_graph():
     graph.add_conditional_edges("summarizer",        route_after_summarizer,       {"contradiction": "contradiction", END: END})
     graph.add_conditional_edges("contradiction",     route_after_contradiction,    {"drug_interaction": "drug_interaction", END: END})
     graph.add_conditional_edges("drug_interaction",  route_after_drug_interaction, {"synthesize": "synthesize", END: END})
-    graph.add_edge("synthesize", END)
+    graph.add_conditional_edges("synthesize",        route_after_synthesize,       {"followup": "followup", END: END})
+    graph.add_edge("followup", END)
 
     return graph.compile()
 

@@ -24,7 +24,7 @@ const EXAMPLE_QUESTIONS = [
   'What is the evidence for SGLT2 inhibitors in chronic kidney disease?',
 ]
 
-const ALL_AGENTS = ['fhir', 'pico', 'search', 'summarizer', 'contradiction', 'drug_interaction', 'synthesize']
+const ALL_AGENTS = ['fhir', 'pico', 'search', 'summarizer', 'contradiction', 'drug_interaction', 'synthesize', 'followup']
 
 // ── micro components ─────────────────────────────────────────────
 function Spinner() {
@@ -151,6 +151,7 @@ export default function App() {
   const [highlightedSource, setHighlightedSource] = useState(null)
   const highlightTimerRef = useRef(null)
   const streamRef = useRef(null)
+  const searchBarRef = useRef(null)
   // Comparison mode
   const [compareMode, setCompareMode]     = useState(false)
   const [questionB, setQuestionB]         = useState('')
@@ -203,6 +204,16 @@ export default function App() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     // Clear highlight after 2.5s
     highlightTimerRef.current = setTimeout(() => setHighlightedSource(null), 2500)
+  }
+
+  const handleFollowupClick = (q) => {
+    // Pre-fill the question and scroll to search bar without clearing the current
+    // report — the user can read the suggestion before deciding to run it.
+    setQuestion(q)
+    setTimeout(() => {
+      searchBarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      searchBarRef.current?.focus()
+    }, 80)
   }
 
   const stopComparePoller = () => {
@@ -459,6 +470,7 @@ export default function App() {
                             : <Search className="w-5 h-5 text-slate-400 mt-1 shrink-0" />
                           }
                           <textarea
+                            ref={searchBarRef}
                             value={question}
                             onChange={e => setQuestion(e.target.value)}
                             placeholder={compareMode ? "First treatment or question…" : "e.g. What is the efficacy of metformin for type 2 diabetes prevention?"}
@@ -807,6 +819,7 @@ export default function App() {
                       report={jobStatus.report}
                       question={jobStatus.question}
                       onCiteClick={handleCiteClick}
+                      onFollowupClick={handleFollowupClick}
                     />
                   )}
 

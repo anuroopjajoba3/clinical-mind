@@ -72,7 +72,7 @@ def run_pipeline(self, job_id: str, question: str, fhir_patient_id: str = None, 
         "agent_status": {
             "fhir": "idle", "pico": "idle", "search": "idle",
             "summarizer": "idle", "contradiction": "idle",
-            "drug_interaction": "idle", "synthesize": "idle",
+            "drug_interaction": "idle", "synthesize": "idle", "followup": "idle",
         },
         "error": None,
     }
