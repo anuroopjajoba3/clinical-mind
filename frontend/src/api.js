@@ -54,6 +54,17 @@ export const researchAPI = {
   history: ()         => api.get('/history'),
 }
 
+// Comparison helpers
+export const compareAPI = {
+  start: (question_a, question_b, fhir_patient_id = null) =>
+    api.post('/compare', {
+      question_a,
+      question_b,
+      ...(fhir_patient_id ? { fhir_patient_id } : {}),
+    }),
+  status: (compare_id) => api.get(`/compare/${compare_id}`),
+}
+
 // SSE stream factory — synchronous so streamRef.current holds the actual EventSource,
 // not a Promise (which would make stopStream's .close() call fail silently).
 // getCurrentApiBase() uses the cached value from a prior researchAPI.start() call.

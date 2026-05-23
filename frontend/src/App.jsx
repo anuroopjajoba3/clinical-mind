@@ -4,7 +4,7 @@ import {
   Search, Activity, Brain, BarChart3, FileText,
   AlertTriangle, CheckCircle, ChevronRight, LogOut, Clock, X,
 } from 'lucide-react'
-import { researchAPI, createJobStream, authAPI } from './api'
+import { researchAPI, compareAPI, createJobStream, authAPI } from './api'
 import AgentPipeline   from './components/AgentPipeline'
 import EvidenceCard    from './components/EvidenceCard'
 import ReportPanel     from './components/ReportPanel'
@@ -12,6 +12,7 @@ import AuthModal       from './components/AuthModal'
 import SearchHistory   from './components/SearchHistory'
 import PatientSelector    from './components/PatientSelector'
 import PatientDetailPanel from './components/PatientDetailPanel'
+import ComparisonPanel    from './components/ComparisonPanel'
 import { AnatomyBackground } from './components/AnatomyBackground'
 
 // ── constants ────────────────────────────────────────────────────
@@ -149,6 +150,11 @@ export default function App() {
   const [highlightedSource, setHighlightedSource] = useState(null)
   const highlightTimerRef = useRef(null)
   const streamRef = useRef(null)
+  // Comparison mode
+  const [compareMode, setCompareMode]     = useState(false)
+  const [questionB, setQuestionB]         = useState('')
+  const [compareStatus, setCompareStatus] = useState(null)
+  const comparePollerRef = useRef(null)
 
   useEffect(() => {
     const token = sessionStorage.getItem('cm_token')
@@ -196,6 +202,35 @@ export default function App() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     // Clear highlight after 2.5s
     highlightTimerRef.current = setTimeout(() => setHighlightedSource(null), 2500)
+  }
+
+  const stopComparePoller = () => {
+    if (comparePollerRef.current) { clearInterval(comparePollerRef.current); comparePollerRef.current = null }
+  }
+
+  const handleCompareSubmit = async () => {
+    if (!question.trim() || !questionB.trim() || isSubmitting) return
+    setError(null); setCompareStatus({ status: 'pending' }); setIsSubmitting(true)
+    stopComparePoller()
+    try {
+      const res = await compareAPI.start(question.trim(), questionB.trim(), fhirPatientId)
+      const { compare_id } = res.data
+      setCompareStatus({ status: 'running', compare_id, question_a: question.trim(), question_b: questionB.trim() })
+      comparePollerRef.current = setInterval(async () => {
+        try {
+          const r = await compareAPI.status(compare_id)
+          setCompareStatus(r.data)
+          if (r.data.status === 'complete' || r.data.status === 'error') {
+            stopComparePoller()
+            setIsSubmitting(false)
+            if (r.data.error) setError(r.data.error)
+          }
+        } catch { stopComparePoller(); setIsSubmitting(false) }
+      }, 3000)
+    } catch (err) {
+      setIsSubmitting(false)
+      setError(err.response?.data?.detail || 'Compare failed. Is the backend running?')
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -274,7 +309,11 @@ export default function App() {
     return suggestions.slice(0, 3)
   })()
 
-  const handleReset = () => { stopStream(); setJobStatus(null); setError(null); setIsSubmitting(false); setQuestion('') }
+  const handleReset = () => {
+    stopStream(); stopComparePoller()
+    setJobStatus(null); setCompareStatus(null)
+    setError(null); setIsSubmitting(false); setQuestion(''); setQuestionB('')
+  }
   const handleLogout = () => { sessionStorage.removeItem('cm_token'); setUser(null) }
   const loadHistory = async (job_id) => {
     setShowHistory(false)
@@ -362,7 +401,7 @@ export default function App() {
 
         {/* ── HOMEPAGE DASHBOARD ─────────────────────────────── */}
         <AnimatePresence>
-          {!jobStatus && (
+          {!jobStatus && !compareStatus && (
             <motion.div
               className="mb-10"
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
@@ -407,31 +446,77 @@ export default function App() {
                   </div>
 
                   {/* Search box */}
-                  <form onSubmit={handleSubmit} className="mb-3">
+                  <form onSubmit={compareMode ? (e) => { e.preventDefault(); handleCompareSubmit() } : handleSubmit} className="mb-3">
                     <div className="relative group">
                       <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
                       <div className="relative bg-white rounded-2xl shadow-lg border border-slate-200 p-2 hover:shadow-xl transition-shadow">
+
+                        {/* Question A (always shown) */}
                         <div className="flex items-start gap-3 px-4 pt-3 pb-1">
-                          <Search className="w-5 h-5 text-slate-400 mt-1 shrink-0" />
+                          {compareMode
+                            ? <span className="w-5 h-5 mt-1 shrink-0 flex items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold">A</span>
+                            : <Search className="w-5 h-5 text-slate-400 mt-1 shrink-0" />
+                          }
                           <textarea
                             value={question}
                             onChange={e => setQuestion(e.target.value)}
-                            placeholder="e.g. What is the efficacy of metformin for type 2 diabetes prevention?"
+                            placeholder={compareMode ? "First treatment or question…" : "e.g. What is the efficacy of metformin for type 2 diabetes prevention?"}
                             rows={2}
                             className="flex-1 bg-transparent text-slate-900 placeholder-slate-400 resize-none focus:outline-none leading-relaxed text-sm"
-                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }}
+                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !compareMode) { e.preventDefault(); handleSubmit() } }}
                           />
                         </div>
+
+                        {/* Question B — slides in when compareMode */}
+                        <AnimatePresence>
+                          {compareMode && (
+                            <motion.div
+                              className="flex items-start gap-3 px-4 pt-2 pb-1 border-t border-slate-100 mt-1"
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              <span className="w-5 h-5 mt-1 shrink-0 flex items-center justify-center rounded-full bg-purple-600 text-white text-xs font-bold">B</span>
+                              <textarea
+                                value={questionB}
+                                onChange={e => setQuestionB(e.target.value)}
+                                placeholder="Second treatment or question to compare…"
+                                rows={2}
+                                className="flex-1 bg-transparent text-slate-900 placeholder-slate-400 resize-none focus:outline-none leading-relaxed text-sm"
+                              />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
                         <div className="flex items-center justify-between px-4 py-2">
-                          <p className="text-xs text-slate-400">Enter to search · Shift+Enter for newline</p>
+                          {/* Compare toggle */}
+                          <button
+                            type="button"
+                            onClick={() => { setCompareMode(m => !m); setQuestionB('') }}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all
+                              ${compareMode
+                                ? 'bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100'
+                                : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600'
+                              }`}
+                          >
+                            <span>⚖️</span>
+                            {compareMode ? 'Cancel compare' : 'Compare two'}
+                          </button>
+
                           <motion.button
                             type="submit"
-                            disabled={!question.trim() || isSubmitting}
+                            disabled={!question.trim() || (compareMode && !questionB.trim()) || isSubmitting}
                             className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-blue-500 to-purple-600
                                        text-white text-sm font-medium rounded-xl shadow-sm disabled:opacity-50"
                             whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                           >
-                            {isSubmitting ? <><Spinner />Analysing…</> : <>Research <ChevronRight className="w-4 h-4" /></>}
+                            {isSubmitting
+                              ? <><Spinner />{compareMode ? 'Comparing…' : 'Analysing…'}</>
+                              : compareMode
+                                ? <>⚖️ Compare <ChevronRight className="w-4 h-4" /></>
+                                : <>Research <ChevronRight className="w-4 h-4" /></>
+                            }
                           </motion.button>
                         </div>
                       </div>
@@ -527,6 +612,65 @@ export default function App() {
                   )}
                 </motion.div>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── COMPARE RESULTS ─────────────────────────────────── */}
+        <AnimatePresence>
+          {compareStatus && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+            >
+              <div className="flex items-start justify-between mb-8 gap-4">
+                <div>
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Evidence Comparison</p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="flex items-center gap-1.5 text-sm font-bold text-blue-700">
+                      <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">A</span>
+                      {compareStatus.question_a}
+                    </span>
+                    <span className="text-slate-300 font-bold">vs</span>
+                    <span className="flex items-center gap-1.5 text-sm font-bold text-purple-700">
+                      <span className="w-4 h-4 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center font-bold">B</span>
+                      {compareStatus.question_b}
+                    </span>
+                  </div>
+                </div>
+                <motion.button
+                  onClick={handleReset}
+                  className="shrink-0 flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200
+                             rounded-lg text-slate-600 hover:text-slate-900 hover:border-blue-300 text-sm transition-all"
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                >
+                  <X className="w-4 h-4" /> New Search
+                </motion.button>
+              </div>
+
+              {compareStatus.status === 'running' || compareStatus.status === 'pending' ? (
+                <div className="flex flex-col items-center justify-center py-20 gap-4">
+                  <div className="w-12 h-12 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin" />
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-slate-700">Running two parallel pipelines…</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      A: {compareStatus.status_a || 'pending'} · B: {compareStatus.status_b || 'pending'}
+                    </p>
+                  </div>
+                </div>
+              ) : compareStatus.status === 'complete' ? (
+                <ComparisonPanel compareResult={compareStatus} />
+              ) : null}
+
+              {error && (
+                <motion.div
+                  className="mt-4 p-4 bg-red-50 rounded-2xl border border-red-200 flex items-start gap-3"
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                >
+                  <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-700">{error}</p>
+                </motion.div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

@@ -4,6 +4,7 @@ Auth + SSE streaming + PostgreSQL + Redis + Celery pipeline
 """
 
 import os
+import uuid
 import json
 import asyncio
 from datetime import timedelta
@@ -117,6 +118,12 @@ class ResearchRequest(BaseModel):
     question: str = Field(..., min_length=10, max_length=500)
     fhir_patient_id: Optional[str] = None    # attach patient context from FHIR
     session_history: Optional[list[SessionEntry]] = None  # prior Q&A in this session
+
+
+class CompareRequest(BaseModel):
+    question_a: str = Field(..., min_length=10, max_length=500)
+    question_b: str = Field(..., min_length=10, max_length=500)
+    fhir_patient_id: Optional[str] = None
 
 
 class ResearchResponse(BaseModel):
@@ -357,6 +364,211 @@ async def get_history(
             for j in jobs
         ]
     }
+
+
+# ─── Comparison routes ───────────────────────────────────────────────────────
+
+async def _get_job_state(job_id: str, db: AsyncSession, r) -> Optional[dict]:
+    """Pull a job's latest state from Redis, falling back to DB."""
+    cached = await r.get(f"job:{job_id}:latest")
+    if cached:
+        return json.loads(cached)
+    result = await db.execute(select(Job).where(Job.id == job_id))
+    job = result.scalar_one_or_none()
+    if not job:
+        return None
+    return {
+        "status": job.status,
+        "report": job.report,
+        "summaries": job.summaries,
+        "question": job.question,
+        "error": job.error,
+    }
+
+
+async def _synthesize_comparison(
+    question_a: str, question_b: str,
+    report_a: dict, report_b: dict,
+) -> dict:
+    """
+    Call Claude Haiku to produce a structured head-to-head comparison.
+    Done inline (not in Celery) because it's a single fast call and the
+    result is cached in Redis immediately after.
+    """
+    from langchain_anthropic import ChatAnthropic
+    from langchain_core.messages import HumanMessage
+
+    llm = ChatAnthropic(model="claude-haiku-4-5-20251001", temperature=0, max_tokens=1500)
+
+    prompt = f"""Compare these two clinical evidence syntheses head-to-head. Return ONLY valid JSON, no markdown.
+
+TREATMENT A — {question_a}
+Bottom Line: {report_a.get("clinical_bottom_line", "N/A")}
+Top recommendations: {json.dumps((report_a.get("recommendations") or [])[:3])}
+
+TREATMENT B — {question_b}
+Bottom Line: {report_b.get("clinical_bottom_line", "N/A")}
+Top recommendations: {json.dumps((report_b.get("recommendations") or [])[:3])}
+
+For each dimension winner use "A", "B", or "tie". Be clinically precise and specific.
+
+{{
+  "treatment_a_label": "3-5 word label for A",
+  "treatment_b_label": "3-5 word label for B",
+  "dimensions": [
+    {{"name": "Efficacy & Outcomes",    "a": "one sentence", "b": "one sentence", "winner": "A|B|tie", "winner_note": "why"}},
+    {{"name": "Safety Profile",          "a": "one sentence", "b": "one sentence", "winner": "A|B|tie", "winner_note": "why"}},
+    {{"name": "Evidence Quality",        "a": "one sentence", "b": "one sentence", "winner": "A|B|tie", "winner_note": "why"}},
+    {{"name": "Patient Selection",       "a": "one sentence", "b": "one sentence", "winner": "tie",     "winner_note": "context-dependent"}},
+    {{"name": "Practical Considerations","a": "one sentence", "b": "one sentence", "winner": "A|B|tie", "winner_note": "why"}}
+  ],
+  "overall_winner": "A|B|tie",
+  "clinical_verdict": "2 sentences: overall take and when to prefer each",
+  "prefer_a_profile": "Prefer A when the patient has... (one sentence)",
+  "prefer_b_profile": "Prefer B when the patient has... (one sentence)"
+}}"""
+
+    try:
+        resp = await llm.ainvoke([HumanMessage(content=prompt)])
+        text = resp.content.strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        return json.loads(text)
+    except Exception as e:
+        return {
+            "error": str(e),
+            "treatment_a_label": "Treatment A",
+            "treatment_b_label": "Treatment B",
+            "dimensions": [],
+            "overall_winner": "tie",
+            "clinical_verdict": "Comparison synthesis unavailable.",
+            "prefer_a_profile": "",
+            "prefer_b_profile": "",
+        }
+
+
+@app.post("/compare", status_code=202)
+@limiter.limit("5/minute")
+async def start_compare(
+    request: Request,
+    body: CompareRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user),
+):
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY is not configured.")
+
+    # Create two independent pipeline jobs
+    uid = current_user.id if current_user else None
+    job_a = Job(question=body.question_a, user_id=uid, status="pending")
+    job_b = Job(question=body.question_b, user_id=uid, status="pending")
+    db.add(job_a); db.add(job_b)
+    await db.commit()
+    await db.refresh(job_a); await db.refresh(job_b)
+
+    job_id_a, job_id_b = str(job_a.id), str(job_b.id)
+    compare_id = str(uuid.uuid4())
+
+    # Store compare metadata in Redis (1 hour TTL)
+    _ssl = {"ssl_cert_reqs": "none"} if REDIS_URL.startswith("rediss://") else {}
+    r = aioredis.from_url(REDIS_URL, decode_responses=True, **_ssl)
+    await r.setex(f"compare:{compare_id}", 3600, json.dumps({
+        "job_id_a": job_id_a,
+        "job_id_b": job_id_b,
+        "question_a": body.question_a,
+        "question_b": body.question_b,
+    }))
+    await r.aclose()
+
+    # Dispatch both pipelines in parallel
+    run_pipeline.apply_async(
+        args=[job_id_a, body.question_a],
+        kwargs={"fhir_patient_id": body.fhir_patient_id},
+        task_id=job_id_a,
+    )
+    run_pipeline.apply_async(
+        args=[job_id_b, body.question_b],
+        kwargs={"fhir_patient_id": body.fhir_patient_id},
+        task_id=job_id_b,
+    )
+
+    return {"compare_id": compare_id, "job_id_a": job_id_a, "job_id_b": job_id_b}
+
+
+@app.get("/compare/{compare_id}")
+async def get_compare(compare_id: str, db: AsyncSession = Depends(get_db)):
+    _ssl = {"ssl_cert_reqs": "none"} if REDIS_URL.startswith("rediss://") else {}
+    r = aioredis.from_url(REDIS_URL, decode_responses=True, **_ssl)
+
+    try:
+        meta_raw = await r.get(f"compare:{compare_id}")
+        if not meta_raw:
+            raise HTTPException(status_code=404, detail="Compare session not found or expired.")
+
+        meta = json.loads(meta_raw)
+        job_id_a, job_id_b = meta["job_id_a"], meta["job_id_b"]
+
+        # Return cached result if the synthesis already ran
+        cached = await r.get(f"compare:{compare_id}:result")
+        if cached:
+            return json.loads(cached)
+
+        state_a = await _get_job_state(job_id_a, db, r)
+        state_b = await _get_job_state(job_id_b, db, r)
+
+        status_a = (state_a or {}).get("status", "pending")
+        status_b = (state_b or {}).get("status", "pending")
+
+        if status_a == "error" or status_b == "error":
+            return {
+                "status": "error",
+                "error": "One or both research jobs failed.",
+                "status_a": status_a,
+                "status_b": status_b,
+            }
+
+        if status_a != "complete" or status_b != "complete":
+            return {
+                "status": "running",
+                "job_id_a": job_id_a,
+                "job_id_b": job_id_b,
+                "question_a": meta["question_a"],
+                "question_b": meta["question_b"],
+                "status_a": status_a,
+                "status_b": status_b,
+            }
+
+        # Both complete — run comparison synthesis
+        report_a = (state_a or {}).get("report") or {}
+        report_b = (state_b or {}).get("report") or {}
+        comparison = await _synthesize_comparison(
+            meta["question_a"], meta["question_b"], report_a, report_b
+        )
+
+        result = {
+            "status": "complete",
+            "compare_id": compare_id,
+            "question_a": meta["question_a"],
+            "question_b": meta["question_b"],
+            "job_a": {
+                "job_id": job_id_a,
+                "report": report_a,
+                "summaries": (state_a or {}).get("summaries") or [],
+            },
+            "job_b": {
+                "job_id": job_id_b,
+                "report": report_b,
+                "summaries": (state_b or {}).get("summaries") or [],
+            },
+            "comparison": comparison,
+        }
+
+        await r.setex(f"compare:{compare_id}:result", 3600, json.dumps(result))
+        return result
+    finally:
+        await r.aclose()
 
 
 # ─── FHIR routes ─────────────────────────────────────────────────────────────
