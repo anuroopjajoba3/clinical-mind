@@ -17,6 +17,7 @@ from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -48,10 +49,17 @@ pipeline_runs_total   = Counter("clinicalmind_pipeline_runs_total",   "Total pip
 pipeline_duration_sec = Histogram("clinicalmind_pipeline_duration_seconds", "Pipeline duration", buckets=[5, 10, 20, 30, 60, 120])
 fhir_requests_total   = Counter("clinicalmind_fhir_requests_total",   "FHIR API requests",   ["endpoint", "status"])
 
+@asynccontextmanager
+async def lifespan(app_: FastAPI):
+    await create_tables()
+    yield
+
+
 app = FastAPI(
     title="ClinicalMind API",
     description="Production multi-agent clinical evidence synthesis",
     version="2.0.0",
+    lifespan=lifespan,
 )
 
 app.state.limiter = limiter
@@ -84,10 +92,6 @@ app.add_middleware(
 # Auto-instrument all routes (request count, latency, status codes)
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
-
-@app.on_event("startup")
-async def startup():
-    await create_tables()
 
 
 # ─── Schemas ─────────────────────────────────────────────────────────────────
@@ -757,8 +761,39 @@ async def export_report_pdf(
 # ─── Health ───────────────────────────────────────────────────────────────────
 
 @app.get("/health")
-async def health():
-    return {"status": "ok", "service": "ClinicalMind API", "version": "2.0.0"}
+async def health(db: AsyncSession = Depends(get_db)):
+    checks: dict[str, str] = {}
+
+    # Database
+    try:
+        await db.execute(select(Job).limit(1))
+        checks["database"] = "ok"
+    except Exception as e:
+        checks["database"] = f"error: {e}"
+
+    # Redis
+    try:
+        _ssl = {"ssl_cert_reqs": "none"} if REDIS_URL.startswith("rediss://") else {}
+        r = aioredis.from_url(REDIS_URL, decode_responses=True, **_ssl)
+        await r.ping()
+        await r.aclose()
+        checks["redis"] = "ok"
+    except Exception as e:
+        checks["redis"] = f"error: {e}"
+
+    # FHIR (non-fatal — optional dependency)
+    try:
+        checks["fhir"] = "ok" if await fhir.fhir_server_healthy() else "unavailable"
+    except Exception:
+        checks["fhir"] = "unavailable"
+
+    overall = "ok" if all(v == "ok" for k, v in checks.items() if k != "fhir") else "degraded"
+    status_code = 200 if overall == "ok" else 503
+    return Response(
+        content=json.dumps({"status": overall, "checks": checks, "version": "2.0.0"}),
+        media_type="application/json",
+        status_code=status_code,
+    )
 
 
 # ─── SMART on FHIR ────────────────────────────────────────────────────────────

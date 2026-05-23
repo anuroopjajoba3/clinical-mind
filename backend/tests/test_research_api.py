@@ -57,5 +57,7 @@ async def test_history_authenticated(authed_client: AsyncClient):
 @pytest.mark.asyncio
 async def test_health_endpoint(client: AsyncClient):
     resp = await client.get("/health")
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "ok"
+    # 200 (all deps ok) or 503 (Redis/FHIR unavailable in CI) — both are valid responses
+    assert resp.status_code in (200, 503)
+    assert resp.json()["status"] in ("ok", "degraded")
+    assert "checks" in resp.json()
