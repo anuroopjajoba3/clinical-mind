@@ -3,6 +3,7 @@ omit =
     worker.py
     clinicaltrials.py
     pubmed.py
+    seed_patients.py
     tests/*
 
 [report]
