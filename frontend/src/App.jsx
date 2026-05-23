@@ -649,13 +649,20 @@ export default function App() {
               </div>
 
               {compareStatus.status === 'running' || compareStatus.status === 'pending' ? (
-                <div className="flex flex-col items-center justify-center py-20 gap-4">
-                  <div className="w-12 h-12 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin" />
-                  <div className="text-center">
-                    <p className="text-sm font-semibold text-slate-700">Running two parallel pipelines…</p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      A: {compareStatus.status_a || 'pending'} · B: {compareStatus.status_b || 'pending'}
-                    </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white rounded-2xl border border-blue-100 shadow-sm p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold shrink-0">A</span>
+                      <p className="text-xs font-semibold text-blue-700 truncate">{compareStatus.question_a}</p>
+                    </div>
+                    <AgentPipeline agentStatus={compareStatus.agent_status_a || {}} compact />
+                  </div>
+                  <div className="bg-white rounded-2xl border border-purple-100 shadow-sm p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="w-5 h-5 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center font-bold shrink-0">B</span>
+                      <p className="text-xs font-semibold text-purple-700 truncate">{compareStatus.question_b}</p>
+                    </div>
+                    <AgentPipeline agentStatus={compareStatus.agent_status_b || {}} compact />
                   </div>
                 </div>
               ) : compareStatus.status === 'complete' ? (

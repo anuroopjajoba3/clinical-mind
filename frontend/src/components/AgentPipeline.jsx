@@ -104,7 +104,7 @@ function StatusDot({ status }) {
   return null
 }
 
-function AgentCard({ agent, status, index }) {
+function AgentCard({ agent, status, index, compact = false }) {
   const isRunning  = status === 'running'
   const isComplete = status === 'complete'
   const isError    = status === 'error'
@@ -118,6 +118,27 @@ function AgentCard({ agent, status, index }) {
   const bgClass = isRunning  ? 'bg-blue-50/60'
     : isComplete ? 'bg-emerald-50/60'
     : 'bg-white'
+
+  if (compact) {
+    return (
+      <div
+        className={`relative flex items-center gap-2 rounded-lg px-3 py-2 border transition-all duration-500 ${bgClass} ${borderClass} animate-slide-up opacity-0`}
+        style={{ animationDelay: `${index * 60}ms`, animationFillMode: 'forwards' }}
+      >
+        {isRunning && (
+          <div className="absolute inset-0 rounded-lg overflow-hidden pointer-events-none">
+            <div className="absolute inset-0 -translate-x-full"
+              style={{ background: 'linear-gradient(90deg, transparent, rgba(59,130,246,0.06), transparent)', animation: 'shimmer 2s infinite' }} />
+          </div>
+        )}
+        <span className="text-base">{agent.icon}</span>
+        <p className={`flex-1 text-xs font-medium truncate ${isRunning ? 'text-blue-700' : isComplete ? 'text-emerald-700' : 'text-gray-500'}`}>
+          {isRunning ? agent.runningMsg : isComplete ? agent.completeMsg : agent.label}
+        </p>
+        <StatusDot status={status} />
+      </div>
+    )
+  }
 
   return (
     <div
@@ -176,25 +197,28 @@ function AgentCard({ agent, status, index }) {
   )
 }
 
-function PipelineConnector({ active }) {
+function PipelineConnector({ active, compact = false }) {
   return (
-    <div className="flex justify-center items-center py-1">
+    <div className={`flex justify-center items-center ${compact ? 'py-0.5' : 'py-1'}`}>
       <div className={`
-        h-6 w-px transition-all duration-500
+        w-px transition-all duration-500
+        ${compact ? 'h-3' : 'h-6'}
         ${active ? 'bg-gradient-to-b from-blue-500 to-blue-200' : 'bg-gray-200'}
       `} />
     </div>
   )
 }
 
-export default function AgentPipeline({ agentStatus }) {
+export default function AgentPipeline({ agentStatus, compact = false }) {
   if (!agentStatus) return null
 
   return (
     <div className="w-full">
-      <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-        Agent Pipeline
-      </h2>
+      {!compact && (
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+          Agent Pipeline
+        </h2>
+      )}
       <div className="flex flex-col">
         {AGENTS.map((agent, i) => (
           <React.Fragment key={agent.key}>
@@ -202,10 +226,12 @@ export default function AgentPipeline({ agentStatus }) {
               agent={agent}
               status={agentStatus[agent.key] || 'idle'}
               index={i}
+              compact={compact}
             />
             {i < AGENTS.length - 1 && (
               <PipelineConnector
                 active={agentStatus[agent.key] === 'complete'}
+                compact={compact}
               />
             )}
           </React.Fragment>
