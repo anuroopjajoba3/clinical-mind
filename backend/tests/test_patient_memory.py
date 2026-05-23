@@ -9,7 +9,6 @@ and _compute_risk.
 No database or FHIR server needed — all tests are pure/unit level.
 """
 import uuid
-import pytest
 from unittest.mock import MagicMock
 
 from patient_memory import (

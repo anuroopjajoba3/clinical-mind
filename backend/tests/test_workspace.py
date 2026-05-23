@@ -135,7 +135,7 @@ async def test_save_insight_computes_evidence_levels_from_summaries():
         {"pmid": "333", "evidence_level": "2B"},
     ]
 
-    result = await save_insight(
+    await save_insight(
         db,
         fhir_patient_id="Patient/123",
         job_id=str(uuid.uuid4()),
