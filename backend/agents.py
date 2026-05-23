@@ -826,6 +826,20 @@ Generate a comprehensive structured clinical evidence report."""
             "grade_assessment": "Unable to assess",
         }
 
+    # Build a sources_index so the frontend can resolve [1], [2] citation refs
+    # back to real paper metadata without any extra lookups.
+    sources_index: dict[str, dict] = {}
+    for i, s in enumerate(state["summaries"], 1):
+        sources_index[str(i)] = {
+            "pmid":    s.get("pmid", ""),
+            "title":   s.get("title", ""),
+            "journal": s.get("journal", ""),
+            "year":    s.get("year", ""),
+            "url":     s.get("url", ""),
+            "source":  s.get("source", "PubMed"),
+        }
+    report["sources_index"] = sources_index
+
     state["report"] = report
     state["agent_status"]["synthesize"] = "complete"
     return state
