@@ -544,6 +544,8 @@ async def get_compare(compare_id: str, db: AsyncSession = Depends(get_db)):
                 "question_b": meta["question_b"],
                 "status_a": status_a,
                 "status_b": status_b,
+                "agent_status_a": (state_a or {}).get("agent_status") or {},
+                "agent_status_b": (state_b or {}).get("agent_status") or {},
             }
 
         # Both complete — run comparison synthesis
@@ -690,6 +692,33 @@ async def get_patient_appointments(patient_id: str):
         return {"appointments": await fhir.get_appointments_for_patient(patient_id)}
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
+
+
+@app.get("/fhir/patients/{patient_id}/documents")
+async def get_patient_documents(patient_id: str):
+    """
+    GET /fhir/patients/{id}/documents — ClinicalMind reports written back to FHIR
+    for this patient.  Returns a simplified list: id, date, description, job_id.
+    """
+    try:
+        raw = await fhir.get_document_references(patient_id)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    docs = []
+    for ref in raw:
+        context = ref.get("context", {})
+        related = context.get("related", [{}])
+        job_id_display = related[0].get("display", "") if related else ""
+        # job_id is stored as "Research job: <uuid>"
+        job_id = job_id_display.replace("Research job: ", "").strip() or None
+        docs.append({
+            "fhir_id":     ref.get("id"),
+            "date":        ref.get("date"),
+            "description": ref.get("description", ""),
+            "job_id":      job_id,
+        })
+    return {"documents": docs}
 
 
 # ── Write-back ────────────────────────────────────────────────────────────────

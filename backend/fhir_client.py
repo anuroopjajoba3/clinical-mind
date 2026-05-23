@@ -272,6 +272,28 @@ async def write_clinical_report(
     return resp.json()
 
 
+async def get_document_references(patient_id: str) -> list[dict]:
+    """
+    GET /DocumentReference?subject=Patient/{id}&type=11488-4
+    Returns ClinicalMind evidence reports previously written back to the FHIR server
+    for this patient, newest first.
+    """
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(
+            f"{_fhir_base()}/DocumentReference",
+            params={
+                "subject": f"Patient/{patient_id}",
+                "type":    "http://loinc.org|11488-4",
+                "_sort":   "-date",
+                "_count":  "20",
+            },
+            headers=HEADERS,
+        )
+    if resp.status_code >= 400:
+        return []
+    return [e["resource"] for e in resp.json().get("entry", [])]
+
+
 # ════════════════════════════════════════════════════════════════════════════
 # CONDITIONS
 # ════════════════════════════════════════════════════════════════════════════

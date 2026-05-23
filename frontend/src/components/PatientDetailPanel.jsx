@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, User, Activity, Pill, FlaskConical, AlertCircle,
-  Calendar, Clock, ChevronDown, ChevronUp, Stethoscope, RefreshCw,
+  Calendar, Clock, ChevronDown, ChevronUp, Stethoscope, RefreshCw, FileText,
 } from 'lucide-react'
 import api from '../api'
 import LabTrendChart from './LabTrendChart'
@@ -229,11 +229,81 @@ function RiskPanel({ risk }) {
 
 // ── main panel ───────────────────────────────────────────────────────
 
+function PriorReportsTab({ fhirId }) {
+  const [docs,    setDocs]    = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!fhirId) return
+    setLoading(true)
+    api.get(`/fhir/patients/${fhirId}/documents`)
+      .then(r => setDocs(r.data.documents || []))
+      .catch(() => setDocs([]))
+      .finally(() => setLoading(false))
+  }, [fhirId])
+
+  if (loading) {
+    return (
+      <div className="space-y-2 pt-2">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="h-16 rounded-xl bg-slate-100 animate-pulse" />
+        ))}
+      </div>
+    )
+  }
+
+  if (!docs?.length) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+          <FileText className="w-5 h-5 text-slate-400" />
+        </div>
+        <p className="text-sm font-medium text-slate-600">No reports yet</p>
+        <p className="text-xs text-slate-400 mt-1">
+          Reports are written to the FHIR chart when a pipeline completes for this patient.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2 pt-2">
+      {docs.map(doc => (
+        <div
+          key={doc.fhir_id}
+          className="flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-100 shadow-sm hover:border-blue-200 hover:shadow transition-all"
+        >
+          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
+            <FileText className="w-4 h-4 text-blue-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-slate-800 line-clamp-2 leading-snug">
+              {doc.description?.replace('ClinicalMind Evidence Report — ', '') || 'Evidence Report'}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              {doc.date ? new Date(doc.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
+            </p>
+          </div>
+          {doc.job_id && (
+            <a
+              href={`/?job=${doc.job_id}`}
+              className="shrink-0 text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors"
+              title="Open report"
+            >
+              View ↗
+            </a>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function PatientDetailPanel({ fhirId, onClose }) {
   const [data,      setData]      = useState(null)
   const [loading,   setLoading]   = useState(true)
   const [error,     setError]     = useState(null)
-  const [activeTab, setActiveTab] = useState('record')  // 'record' | 'workspace'
+  const [activeTab, setActiveTab] = useState('record')  // 'record' | 'workspace' | 'reports'
 
   async function load() {
     setLoading(true)
@@ -322,6 +392,7 @@ export default function PatientDetailPanel({ fhirId, onClose }) {
           {[
             { key: 'record',    label: 'Clinical Record' },
             { key: 'workspace', label: 'Evidence Timeline' },
+            { key: 'reports',   label: 'FHIR Reports' },
           ].map(tab => (
             <button
               key={tab.key}
@@ -343,6 +414,11 @@ export default function PatientDetailPanel({ fhirId, onClose }) {
           {/* ── Workspace tab ── */}
           {activeTab === 'workspace' && (
             <PatientWorkspace fhirId={fhirId} />
+          )}
+
+          {/* ── FHIR Reports tab ── */}
+          {activeTab === 'reports' && (
+            <PriorReportsTab fhirId={fhirId} />
           )}
 
           {/* ── Clinical Record tab ── */}

@@ -154,6 +154,21 @@ def run_pipeline(self, job_id: str, question: str, fhir_patient_id: str = None, 
                 # Non-fatal — the job result is already persisted above
                 print(f"Insight write error: {e}")
 
+            # Write the completed report back to FHIR as a DocumentReference so
+            # it becomes a permanent entry in the patient's chart, visible in any
+            # FHIR-compliant EMR and searchable by future pipeline runs.
+            try:
+                from fhir_client import write_clinical_report
+                await write_clinical_report(
+                    patient_id = fhir_patient_id,
+                    job_id     = job_id,
+                    question   = question,
+                    report     = report,
+                )
+            except Exception as e:
+                # Non-fatal — FHIR server may be unavailable in some environments
+                print(f"FHIR write-back error: {e}")
+
         return final_update
 
     return asyncio.run(_run())
