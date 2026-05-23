@@ -1,0 +1,316 @@
+{
+  "run_at": "2026-05-23T01:41:05.185188+00:00",
+  "api": "http://localhost:8000",
+  "results": [
+    {
+      "scenario_id": "t2dm_firstline",
+      "category": "Diabetes",
+      "question": "What is the first-line pharmacological treatment for type 2 diabetes mellitus in a newly diagnosed patient without cardiovascular disease?",
+      "source_count": 8,
+      "rec_count": 3,
+      "structural": {
+        "checks": {
+          "field_evidence_summary": true,
+          "field_clinical_bottom_line": true,
+          "field_limitations": true,
+          "field_background": true,
+          "field_key_interventions": true,
+          "field_recommendations": true,
+          "min_sources": true,
+          "rec_has_level": true,
+          "rec_has_text": true,
+          "rec_has_rationale": true,
+          "rec_has_source_refs": true,
+          "bottom_line_substantive": true,
+          "has_high_evidence": true,
+          "keyword_coverage": true
+        },
+        "score": 100,
+        "passed": 14,
+        "total": 14
+      },
+      "quality": null,
+      "elapsed_s": 37.6,
+      "error": null
+    },
+    {
+      "scenario_id": "hfref_management",
+      "category": "Cardiology",
+      "question": "What are the evidence-based pharmacological treatments for heart failure with reduced ejection fraction (HFrEF, EF < 40%)?",
+      "source_count": 8,
+      "rec_count": 4,
+      "structural": {
+        "checks": {
+          "field_evidence_summary": true,
+          "field_clinical_bottom_line": true,
+          "field_limitations": true,
+          "field_background": true,
+          "field_key_interventions": true,
+          "field_recommendations": true,
+          "min_sources": true,
+          "rec_has_level": true,
+          "rec_has_text": true,
+          "rec_has_rationale": true,
+          "rec_has_source_refs": true,
+          "bottom_line_substantive": true,
+          "has_high_evidence": true,
+          "keyword_coverage": true
+        },
+        "score": 100,
+        "passed": 14,
+        "total": 14
+      },
+      "quality": null,
+      "elapsed_s": 43.3,
+      "error": null
+    },
+    {
+      "scenario_id": "ckd_progression",
+      "category": "Nephrology",
+      "question": "What interventions slow the progression of chronic kidney disease in patients with type 2 diabetes and eGFR 30-60 mL/min/1.73m\u00b2?",
+      "source_count": 8,
+      "rec_count": 3,
+      "structural": {
+        "checks": {
+          "field_evidence_summary": true,
+          "field_clinical_bottom_line": true,
+          "field_limitations": true,
+          "field_background": true,
+          "field_key_interventions": true,
+          "field_recommendations": true,
+          "min_sources": true,
+          "rec_has_level": true,
+          "rec_has_text": true,
+          "rec_has_rationale": true,
+          "rec_has_source_refs": true,
+          "bottom_line_substantive": true,
+          "has_high_evidence": true,
+          "keyword_coverage": false
+        },
+        "score": 93,
+        "passed": 13,
+        "total": 14
+      },
+      "quality": null,
+      "elapsed_s": 43.9,
+      "error": null
+    },
+    {
+      "scenario_id": "hypertension_ckd",
+      "category": "Nephrology",
+      "question": "What is the target blood pressure and preferred antihypertensive agents in patients with chronic kidney disease and proteinuria?",
+      "source_count": 8,
+      "rec_count": 3,
+      "structural": {
+        "checks": {
+          "field_evidence_summary": true,
+          "field_clinical_bottom_line": true,
+          "field_limitations": true,
+          "field_background": true,
+          "field_key_interventions": true,
+          "field_recommendations": true,
+          "min_sources": true,
+          "rec_has_level": true,
+          "rec_has_text": true,
+          "rec_has_rationale": true,
+          "rec_has_source_refs": true,
+          "bottom_line_substantive": true,
+          "has_high_evidence": true,
+          "keyword_coverage": true
+        },
+        "score": 100,
+        "passed": 14,
+        "total": 14
+      },
+      "quality": null,
+      "elapsed_s": 36.5,
+      "error": null
+    },
+    {
+      "scenario_id": "statin_primary_prevention",
+      "category": "Cardiology",
+      "question": "What is the evidence for statin therapy in primary prevention of cardiovascular events in patients aged 40-75 with elevated LDL?",
+      "source_count": 7,
+      "rec_count": 0,
+      "structural": {
+        "checks": {
+          "field_evidence_summary": true,
+          "field_clinical_bottom_line": true,
+          "field_limitations": true,
+          "field_background": true,
+          "field_key_interventions": false,
+          "field_recommendations": false,
+          "min_sources": true,
+          "rec_has_level": false,
+          "rec_has_text": false,
+          "rec_has_rationale": false,
+          "rec_has_source_refs": false,
+          "bottom_line_substantive": false,
+          "has_high_evidence": true,
+          "keyword_coverage": true
+        },
+        "score": 50,
+        "passed": 7,
+        "total": 14
+      },
+      "quality": null,
+      "elapsed_s": 40.0,
+      "error": null
+    },
+    {
+      "scenario_id": "sglt2_heart_failure",
+      "category": "Cardiology",
+      "question": "What is the evidence for SGLT2 inhibitors in heart failure with preserved ejection fraction (HFpEF)?",
+      "source_count": 8,
+      "rec_count": 3,
+      "structural": {
+        "checks": {
+          "field_evidence_summary": true,
+          "field_clinical_bottom_line": true,
+          "field_limitations": true,
+          "field_background": true,
+          "field_key_interventions": true,
+          "field_recommendations": true,
+          "min_sources": true,
+          "rec_has_level": true,
+          "rec_has_text": true,
+          "rec_has_rationale": true,
+          "rec_has_source_refs": true,
+          "bottom_line_substantive": true,
+          "has_high_evidence": true,
+          "keyword_coverage": true
+        },
+        "score": 100,
+        "passed": 14,
+        "total": 14
+      },
+      "quality": null,
+      "elapsed_s": 64.4,
+      "error": null
+    },
+    {
+      "scenario_id": "glp1_obesity",
+      "category": "Endocrinology",
+      "question": "What is the efficacy of GLP-1 receptor agonists for weight management in adults with obesity without type 2 diabetes?",
+      "source_count": 8,
+      "rec_count": 3,
+      "structural": {
+        "checks": {
+          "field_evidence_summary": true,
+          "field_clinical_bottom_line": true,
+          "field_limitations": true,
+          "field_background": true,
+          "field_key_interventions": true,
+          "field_recommendations": true,
+          "min_sources": true,
+          "rec_has_level": true,
+          "rec_has_text": true,
+          "rec_has_rationale": true,
+          "rec_has_source_refs": true,
+          "bottom_line_substantive": true,
+          "has_high_evidence": true,
+          "keyword_coverage": false
+        },
+        "score": 93,
+        "passed": 13,
+        "total": 14
+      },
+      "quality": null,
+      "elapsed_s": 64.2,
+      "error": null
+    },
+    {
+      "scenario_id": "metformin_ckd_safety",
+      "category": "Nephrology",
+      "question": "Is metformin safe to use in patients with chronic kidney disease, and at what eGFR should it be dose-reduced or stopped?",
+      "source_count": 8,
+      "rec_count": 3,
+      "structural": {
+        "checks": {
+          "field_evidence_summary": true,
+          "field_clinical_bottom_line": true,
+          "field_limitations": true,
+          "field_background": true,
+          "field_key_interventions": true,
+          "field_recommendations": true,
+          "min_sources": true,
+          "rec_has_level": true,
+          "rec_has_text": true,
+          "rec_has_rationale": true,
+          "rec_has_source_refs": true,
+          "bottom_line_substantive": true,
+          "has_high_evidence": true,
+          "keyword_coverage": true
+        },
+        "score": 100,
+        "passed": 14,
+        "total": 14
+      },
+      "quality": null,
+      "elapsed_s": 66.5,
+      "error": null
+    },
+    {
+      "scenario_id": "ace_inhibitor_diabetic_nephropathy",
+      "category": "Nephrology",
+      "question": "What is the evidence for ACE inhibitors or ARBs in reducing progression to end-stage renal disease in diabetic nephropathy?",
+      "source_count": 8,
+      "rec_count": 3,
+      "structural": {
+        "checks": {
+          "field_evidence_summary": true,
+          "field_clinical_bottom_line": true,
+          "field_limitations": true,
+          "field_background": true,
+          "field_key_interventions": true,
+          "field_recommendations": true,
+          "min_sources": true,
+          "rec_has_level": true,
+          "rec_has_text": true,
+          "rec_has_rationale": true,
+          "rec_has_source_refs": true,
+          "bottom_line_substantive": true,
+          "has_high_evidence": true,
+          "keyword_coverage": false
+        },
+        "score": 93,
+        "passed": 13,
+        "total": 14
+      },
+      "quality": null,
+      "elapsed_s": 37.8,
+      "error": null
+    },
+    {
+      "scenario_id": "aspirin_primary_prevention",
+      "category": "Cardiology",
+      "question": "Should low-dose aspirin be used for primary prevention of cardiovascular events in adults over 60?",
+      "source_count": 8,
+      "rec_count": 0,
+      "structural": {
+        "checks": {
+          "field_evidence_summary": true,
+          "field_clinical_bottom_line": true,
+          "field_limitations": true,
+          "field_background": true,
+          "field_key_interventions": false,
+          "field_recommendations": false,
+          "min_sources": true,
+          "rec_has_level": false,
+          "rec_has_text": false,
+          "rec_has_rationale": false,
+          "rec_has_source_refs": false,
+          "bottom_line_substantive": false,
+          "has_high_evidence": true,
+          "keyword_coverage": false
+        },
+        "score": 43,
+        "passed": 6,
+        "total": 14
+      },
+      "quality": null,
+      "elapsed_s": 40.1,
+      "error": null
+    }
+  ]
+}

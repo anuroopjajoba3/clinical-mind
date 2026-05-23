@@ -1,0 +1,75 @@
+name: ClinicalMind Eval Pipeline
+
+on:
+  # Run manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: "Scenario ID to run (leave blank for all 10)"
+        required: false
+        default: ""
+      skip_llm:
+        description: "Skip LLM quality scoring (faster)"
+        type: boolean
+        default: false
+
+  # Run weekly on Sunday at 02:00 UTC
+  schedule:
+    - cron: "0 2 * * 0"
+
+jobs:
+  eval:
+    name: Run evaluation suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install eval dependencies
+        run: pip install httpx anthropic
+
+      - name: Run eval suite
+        env:
+          CLINICALMIND_API_URL: ${{ secrets.CLINICALMIND_API_URL }}
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          cd backend/eval
+          ARGS=""
+          if [ -n "${{ github.event.inputs.scenario }}" ]; then
+            ARGS="$ARGS --scenario ${{ github.event.inputs.scenario }}"
+          fi
+          if [ "${{ github.event.inputs.skip_llm }}" = "true" ]; then
+            ARGS="$ARGS --skip-llm"
+          fi
+          python run_eval.py $ARGS
+
+      - name: Upload results artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-${{ github.run_number }}
+          path: |
+            backend/eval/eval_results.json
+            EVAL_RESULTS.md
+          retention-days: 90
+
+      - name: Post summary to job
+        run: |
+          echo "## ClinicalMind Eval Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat EVAL_RESULTS.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Commit updated EVAL_RESULTS.md
+        if: github.event_name == 'schedule'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add EVAL_RESULTS.md backend/eval/eval_results.json
+          git diff --staged --quiet || git commit -m "chore: update eval results [skip ci]"
+          git push

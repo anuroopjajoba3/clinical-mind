@@ -1,0 +1,82 @@
+[
+  {
+    "id": "t2dm_firstline",
+    "category": "Diabetes",
+    "question": "What is the first-line pharmacological treatment for type 2 diabetes mellitus in a newly diagnosed patient without cardiovascular disease?",
+    "expected_keywords": ["metformin", "HbA1c", "lifestyle", "glucose"],
+    "min_sources": 3,
+    "quality_rubric": "The response should recommend metformin as first-line unless contraindicated, mention HbA1c targets, and reference lifestyle modification alongside pharmacotherapy."
+  },
+  {
+    "id": "hfref_management",
+    "category": "Cardiology",
+    "question": "What are the evidence-based pharmacological treatments for heart failure with reduced ejection fraction (HFrEF, EF < 40%)?",
+    "expected_keywords": ["ACE inhibitor", "ARB", "beta-blocker", "ARNI", "SGLT2", "MRA", "mortality"],
+    "min_sources": 4,
+    "quality_rubric": "Should recommend the four pillars: ACE-I/ARB/ARNI, beta-blocker, MRA, and SGLT2i. Should mention mortality benefit evidence from major trials (PARADIGM-HF, DAPA-HF, EMPEROR). Evidence should be predominantly Level 1A/1B."
+  },
+  {
+    "id": "ckd_progression",
+    "category": "Nephrology",
+    "question": "What interventions slow the progression of chronic kidney disease in patients with type 2 diabetes and eGFR 30-60 mL/min/1.73m²?",
+    "expected_keywords": ["ACE inhibitor", "ARB", "SGLT2", "blood pressure", "proteinuria", "albuminuria"],
+    "min_sources": 3,
+    "quality_rubric": "Should cover RAAS blockade (ACE-I or ARB), SGLT2 inhibitors (finerenone, dapagliflozin, empagliflozin), blood pressure control targets, and protein restriction. Should cite CREDENCE or DAPA-CKD trial."
+  },
+  {
+    "id": "hypertension_ckd",
+    "category": "Nephrology",
+    "question": "What is the target blood pressure and preferred antihypertensive agents in patients with chronic kidney disease and proteinuria?",
+    "expected_keywords": ["ACE inhibitor", "ARB", "130/80", "proteinuria", "RAAS"],
+    "min_sources": 3,
+    "quality_rubric": "Should specify BP target < 130/80 mmHg, recommend ACE-I or ARB as first choice due to renoprotective effects, and discuss potassium monitoring. Should note contraindication of dual RAAS blockade."
+  },
+  {
+    "id": "statin_primary_prevention",
+    "category": "Cardiology",
+    "question": "What is the evidence for statin therapy in primary prevention of cardiovascular events in patients aged 40-75 with elevated LDL?",
+    "expected_keywords": ["statin", "LDL", "cardiovascular", "NNT", "risk", "ASCVD"],
+    "min_sources": 3,
+    "quality_rubric": "Should discuss absolute risk reduction vs relative risk, mention 10-year ASCVD risk calculation, reference JUPITER or HOPE-3 trial, discuss NNT, and note that benefit is greatest in higher-risk patients."
+  },
+  {
+    "id": "sglt2_heart_failure",
+    "category": "Cardiology",
+    "question": "What is the evidence for SGLT2 inhibitors in heart failure with preserved ejection fraction (HFpEF)?",
+    "expected_keywords": ["SGLT2", "dapagliflozin", "empagliflozin", "HFpEF", "EMPEROR", "DELIVER"],
+    "min_sources": 3,
+    "quality_rubric": "Should reference EMPEROR-Preserved and DELIVER trials, discuss the mechanism (osmotic diuresis, cardiac remodeling), and note that benefit exists regardless of diabetes status. Should be primarily Level 1A/1B evidence."
+  },
+  {
+    "id": "glp1_obesity",
+    "category": "Endocrinology",
+    "question": "What is the efficacy of GLP-1 receptor agonists for weight management in adults with obesity without type 2 diabetes?",
+    "expected_keywords": ["semaglutide", "liraglutide", "weight loss", "BMI", "STEP", "SCALE"],
+    "min_sources": 3,
+    "quality_rubric": "Should cite STEP 1-4 trials for semaglutide 2.4mg, SCALE trial for liraglutide 3mg, report average weight loss percentages, and note GI side effects and cost/access barriers."
+  },
+  {
+    "id": "metformin_ckd_safety",
+    "category": "Nephrology",
+    "question": "Is metformin safe to use in patients with chronic kidney disease, and at what eGFR should it be dose-reduced or stopped?",
+    "expected_keywords": ["metformin", "eGFR", "lactic acidosis", "30", "45", "dose reduction"],
+    "min_sources": 2,
+    "quality_rubric": "Should state that metformin is contraindicated below eGFR 30, should be used with caution and dose-reduced between eGFR 30-45, and can be used normally above eGFR 45. Should mention risk of lactic acidosis rationale."
+  },
+  {
+    "id": "ace_inhibitor_diabetic_nephropathy",
+    "category": "Nephrology",
+    "question": "What is the evidence for ACE inhibitors or ARBs in reducing progression to end-stage renal disease in diabetic nephropathy?",
+    "expected_keywords": ["ACE inhibitor", "ARB", "ESRD", "proteinuria", "IRMA-2", "RENAAL", "IDNT", "albuminuria"],
+    "min_sources": 3,
+    "quality_rubric": "Should cite RENAAL (losartan) and IDNT (irbesartan) for T2DM nephropathy, IRMA-2 for microalbuminuria. Should discuss proteinuria reduction as a surrogate endpoint and note renal + cardiovascular benefit. Strong Level 1A/1B evidence expected."
+  },
+  {
+    "id": "aspirin_primary_prevention",
+    "category": "Cardiology",
+    "question": "Should low-dose aspirin be used for primary prevention of cardiovascular events in adults over 60?",
+    "expected_keywords": ["aspirin", "bleeding", "ARRIVE", "ASPREE", "NNT", "NNH", "age", "primary prevention"],
+    "min_sources": 3,
+    "quality_rubric": "Should reference ASPREE (aspirin in elderly), ARRIVE, and ASCEND trials. Should conclude that aspirin is NOT recommended for routine primary prevention in adults > 60 due to bleeding risk outweighing benefit. Should discuss NNT vs NNH analysis."
+  }
+]
