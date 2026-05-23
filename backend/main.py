@@ -464,9 +464,11 @@ async def start_compare(
     uid = current_user.id if current_user else None
     job_a = Job(question=body.question_a, user_id=uid, status="pending")
     job_b = Job(question=body.question_b, user_id=uid, status="pending")
-    db.add(job_a); db.add(job_b)
+    db.add(job_a)
+    db.add(job_b)
     await db.commit()
-    await db.refresh(job_a); await db.refresh(job_b)
+    await db.refresh(job_a)
+    await db.refresh(job_b)
 
     job_id_a, job_id_b = str(job_a.id), str(job_b.id)
     compare_id = str(uuid.uuid4())
