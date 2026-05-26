@@ -278,7 +278,7 @@ function PriorReportsTab({ fhirId }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-slate-800 line-clamp-2 leading-snug">
-              {doc.description?.replace('ClinicalMind Evidence Report — ', '') || 'Evidence Report'}
+              {doc.description?.replace('ClinicalMed Evidence Report — ', '') || 'Evidence Report'}
             </p>
             <p className="text-xs text-slate-400 mt-1">
               {doc.date ? new Date(doc.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}

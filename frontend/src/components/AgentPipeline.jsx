@@ -1,218 +1,171 @@
 import React from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { CheckCircle, XCircle, SkipForward, Loader2 } from 'lucide-react'
 
 const AGENTS = [
-  {
-    key: 'fhir',
-    label: 'FHIR Context Agent',
-    icon: '🏥',
-    description: 'Fetches Patient, Encounter & Appointment data from EMR (HAPI FHIR R4)',
-    runningMsg: 'Fetching EMR data…',
-    completeMsg: 'Patient context loaded',
-  },
-  {
-    key: 'pico',
-    label: 'PICO Agent',
-    icon: '🎯',
-    description: 'Extracts Population · Intervention · Comparison · Outcome',
-    runningMsg: 'Extracting PICO…',
-    completeMsg: 'PICO extracted',
-  },
-  {
-    key: 'search',
-    label: 'Search Agent',
-    icon: '🔍',
-    description: 'Parallel search: PubMed + ClinicalTrials.gov',
-    runningMsg: 'Searching sources…',
-    completeMsg: 'Papers retrieved',
-  },
-  {
-    key: 'summarizer',
-    label: 'Summarizer Agent',
-    icon: '🧬',
-    description: 'Extracts structured data from each source via Claude',
-    runningMsg: 'Analysing abstracts…',
-    completeMsg: 'Summaries complete',
-  },
-  {
-    key: 'contradiction',
-    label: 'Contradiction Agent',
-    icon: '⚡',
-    description: 'Detects conflicting findings across papers',
-    runningMsg: 'Checking conflicts…',
-    completeMsg: 'Analysis complete',
-  },
-  {
-    key: 'drug_interaction',
-    label: 'Drug Interaction Agent',
-    icon: '💊',
-    description: "Checks recommendations against patient's current medications",
-    runningMsg: 'Checking interactions…',
-    completeMsg: 'Interaction check complete',
-  },
-  {
-    key: 'synthesize',
-    label: 'Synthesize Agent',
-    icon: '📋',
-    description: 'Synthesises all evidence into a clinical report',
-    runningMsg: 'Generating report…',
-    completeMsg: 'Report ready',
-  },
-  {
-    key: 'followup',
-    label: 'Follow-up Agent',
-    icon: '🔭',
-    description: 'Identifies evidence gaps and suggests next clinical questions',
-    runningMsg: 'Identifying gaps…',
-    completeMsg: 'Follow-ups ready',
-  },
+  { key: 'fhir',             num: '01', label: 'FHIR Context',     desc: 'Fetching EMR patient data',         doneMsg: 'Patient context loaded' },
+  { key: 'pico',             num: '02', label: 'PICO Extraction',  desc: 'Structuring clinical question',     doneMsg: 'Framework extracted' },
+  { key: 'search',           num: '03', label: 'Evidence Search',  desc: 'Querying PubMed + ClinicalTrials',  doneMsg: 'Papers retrieved' },
+  { key: 'summarizer',       num: '04', label: 'Summarizer',       desc: 'Analysing abstracts',               doneMsg: 'Summaries ready' },
+  { key: 'contradiction',    num: '05', label: 'Contradiction',    desc: 'Detecting conflicting findings',    doneMsg: 'Analysis done' },
+  { key: 'drug_interaction', num: '06', label: 'Drug Interaction', desc: 'Checking medication safety',        doneMsg: 'Interactions checked' },
+  { key: 'synthesize',       num: '07', label: 'Synthesize',       desc: 'Generating clinical report',        doneMsg: 'Report ready' },
+  { key: 'followup',         num: '08', label: 'Follow-up',        desc: 'Identifying evidence gaps',         doneMsg: 'Follow-ups generated' },
 ]
 
-function StatusDot({ status }) {
-  if (status === 'idle') {
-    return (
-      <span className="inline-block w-2.5 h-2.5 rounded-full bg-gray-300" />
-    )
-  }
-  if (status === 'running') {
-    return (
-      <span className="flex gap-0.5 items-center">
-        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 dot-pulse" />
-        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 dot-pulse dot-pulse-delay-1" />
-        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 dot-pulse dot-pulse-delay-2" />
-      </span>
-    )
-  }
-  if (status === 'complete') {
-    return (
-      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400">
-        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
-      </span>
-    )
-  }
-  if (status === 'skipped') {
-    return (
-      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-500/20 text-gray-400">
-        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-        </svg>
-      </span>
-    )
-  }
-  if (status === 'error') {
-    return (
-      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500/20 text-red-400">
-        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </span>
-    )
-  }
-  return null
+function StatusIcon({ status, size = 16 }) {
+  if (status === 'complete') return (
+    <motion.span
+      initial={{ scale: 0 }} animate={{ scale: 1 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 15 }}>
+      <CheckCircle size={size} style={{ color: '#10B981' }} strokeWidth={2.5} />
+    </motion.span>
+  )
+  if (status === 'running') return (
+    <motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
+      <Loader2 size={size} style={{ color: '#3B82F6' }} strokeWidth={2} />
+    </motion.span>
+  )
+  if (status === 'error') return (
+    <XCircle size={size} style={{ color: '#EF4444' }} strokeWidth={2} />
+  )
+  if (status === 'skipped') return (
+    <SkipForward size={size} style={{ color: '#9CA3AF' }} strokeWidth={2} />
+  )
+  return (
+    <span style={{
+      width: size, height: size,
+      borderRadius: '50%',
+      border: '1.5px solid #D1CEC9',
+      display: 'inline-block',
+    }} />
+  )
 }
 
-function AgentCard({ agent, status, index, compact = false }) {
+function AgentRow({ agent, status, index, compact }) {
   const isRunning  = status === 'running'
   const isComplete = status === 'complete'
   const isError    = status === 'error'
   const isSkipped  = status === 'skipped'
 
-  const borderClass = isRunning  ? 'border-blue-400 card-glow-blue'
-    : isComplete ? 'border-emerald-400 card-glow-green'
-    : isError    ? 'border-red-400'
-    : 'border-gray-200'
+  const numClass = isRunning  ? 'step-running'
+    : isComplete ? 'step-complete'
+    : isError    ? 'step-error'
+    : isSkipped  ? 'step-skipped'
+    : 'step-idle'
 
-  const bgClass = isRunning  ? 'bg-blue-50/60'
-    : isComplete ? 'bg-emerald-50/60'
-    : 'bg-white'
+  const labelColor = isRunning  ? '#1D4ED8'
+    : isComplete ? '#065F46'
+    : isError    ? '#DC2626'
+    : isSkipped  ? '#9CA3AF'
+    : '#374151'
+
+  const subText = isRunning  ? agent.desc
+    : isComplete ? agent.doneMsg
+    : isSkipped  ? 'skipped'
+    : isError    ? 'error'
+    : agent.desc
+
+  const subColor = isRunning  ? '#6B9FE4'
+    : isComplete ? '#6EE7B7'
+    : isError    ? '#FCA5A5'
+    : '#9CA3AF'
 
   if (compact) {
     return (
-      <div
-        className={`relative flex items-center gap-2 rounded-lg px-3 py-2 border transition-all duration-500 ${bgClass} ${borderClass} animate-slide-up opacity-0`}
-        style={{ animationDelay: `${index * 60}ms`, animationFillMode: 'forwards' }}
-      >
-        {isRunning && (
-          <div className="absolute inset-0 rounded-lg overflow-hidden pointer-events-none">
-            <div className="absolute inset-0 -translate-x-full"
-              style={{ background: 'linear-gradient(90deg, transparent, rgba(59,130,246,0.06), transparent)', animation: 'shimmer 2s infinite' }} />
-          </div>
-        )}
-        <span className="text-base">{agent.icon}</span>
-        <p className={`flex-1 text-xs font-medium truncate ${isRunning ? 'text-blue-700' : isComplete ? 'text-emerald-700' : 'text-gray-500'}`}>
-          {isRunning ? agent.runningMsg : isComplete ? agent.completeMsg : agent.label}
-        </p>
-        <StatusDot status={status} />
-      </div>
+      <motion.div
+        initial={{ opacity: 0, x: -8 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: index * 0.04, duration: 0.25 }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '6px 10px',
+          borderRadius: 3,
+          background: isRunning ? '#EFF6FF' : isComplete ? '#F0FDF4' : 'transparent',
+          borderLeft: isRunning ? '2px solid #3B82F6' : isComplete ? '2px solid #10B981' : '2px solid transparent',
+          marginBottom: 2,
+        }}>
+        <span className={`step-number ${numClass}`} style={{ width: 20, height: 20, fontSize: 9 }}>
+          {agent.num}
+        </span>
+        <span style={{ flex: 1, fontFamily: 'Inter', fontSize: 12, fontWeight: 500, color: labelColor, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {agent.label}
+        </span>
+        <StatusIcon status={status} size={13} />
+      </motion.div>
     )
   }
 
   return (
-    <div
-      className={`
-        relative flex flex-col gap-3 rounded-xl p-5 border transition-all duration-500
-        ${bgClass} ${borderClass}
-        animate-slide-up opacity-0
-      `}
-      style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'forwards' }}
-    >
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05, duration: 0.3 }}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '10px 14px',
+        borderRadius: 4,
+        position: 'relative',
+        overflow: 'hidden',
+        background: isRunning ? '#EFF6FF' : isComplete ? '#F0FDF4' : '#FAFAF8',
+        borderLeft: isRunning ? '3px solid #3B82F6'
+          : isComplete ? '3px solid #10B981'
+          : isError    ? '3px solid #EF4444'
+          : '3px solid #E5E1D8',
+        marginBottom: 2,
+      }}>
+
       {/* Running shimmer */}
       {isRunning && (
-        <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
-          <div
-            className="absolute inset-0 -translate-x-full"
-            style={{
-              background: 'linear-gradient(90deg, transparent, rgba(59,130,246,0.06), transparent)',
-              animation: 'shimmer 2s infinite',
-            }}
-          />
-        </div>
+        <div style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          background: 'linear-gradient(90deg, transparent 0%, rgba(59,130,246,0.06) 50%, transparent 100%)',
+          animation: 'shimmer 2.2s ease-in-out infinite',
+          transform: 'translateX(-100%)',
+        }} />
       )}
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className={`
-            w-10 h-10 rounded-lg flex items-center justify-center text-xl
-            transition-all duration-300
-            ${isRunning ? 'bg-blue-100' : isComplete ? 'bg-emerald-100' : 'bg-gray-100'}
-          `}>
-            {agent.icon}
-          </div>
-          <div>
-            <p className="font-semibold text-sm text-gray-900">{agent.label}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{agent.description}</p>
-          </div>
-        </div>
-        <StatusDot status={status} />
+      <span className={`step-number ${numClass}`}>{agent.num}</span>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontFamily: 'Inter', fontSize: 13, fontWeight: 600, color: labelColor, lineHeight: 1.3 }}>
+          {agent.label}
+        </p>
+        <p style={{ fontFamily: 'Inter', fontSize: 11, color: subColor, marginTop: 1, lineHeight: 1 }}>
+          {isRunning && (
+            <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center', marginRight: 4 }}>
+              {[0,1,2].map(i => (
+                <span key={i} className="dot-pulse" style={{
+                  width: 3, height: 3, borderRadius: '50%', background: '#3B82F6', display: 'inline-block',
+                  animationDelay: `${i * 0.15}s`,
+                }} />
+              ))}
+            </span>
+          )}
+          {subText}
+        </p>
       </div>
 
-      {/* Status message */}
-      <div className={`
-        text-xs font-medium px-3 py-1.5 rounded-lg w-fit transition-all duration-300
-        ${isRunning  ? 'bg-blue-100 text-blue-700'
-          : isComplete ? 'bg-emerald-100 text-emerald-700'
-          : isError    ? 'bg-red-100 text-red-700'
-          : 'bg-gray-100 text-gray-500'}
-      `}>
-        {isRunning  ? agent.runningMsg
-          : isComplete ? agent.completeMsg
-          : isSkipped  ? 'Skipped (no patient)'
-          : isError    ? 'Error occurred'
-          : 'Waiting…'}
-      </div>
-    </div>
+      <StatusIcon status={status} size={15} />
+    </motion.div>
   )
 }
 
-function PipelineConnector({ active, compact = false }) {
+function PipelineConnector({ fromComplete }) {
   return (
-    <div className={`flex justify-center items-center ${compact ? 'py-0.5' : 'py-1'}`}>
-      <div className={`
-        w-px transition-all duration-500
-        ${compact ? 'h-3' : 'h-6'}
-        ${active ? 'bg-gradient-to-b from-blue-500 to-blue-200' : 'bg-gray-200'}
-      `} />
+    <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: 22, margin: '1px 0' }}>
+      <div style={{
+        width: 1,
+        height: 8,
+        background: fromComplete
+          ? 'linear-gradient(to bottom, #10B981, #6EE7B7)'
+          : '#D1CEC9',
+        transition: 'background 0.4s ease',
+      }} />
     </div>
   )
 }
@@ -221,26 +174,21 @@ export default function AgentPipeline({ agentStatus, compact = false }) {
   if (!agentStatus) return null
 
   return (
-    <div className="w-full">
+    <div style={{ width: '100%' }}>
       {!compact && (
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-          Agent Pipeline
-        </h2>
+        <p className="section-label" style={{ marginBottom: 10 }}>Agent Pipeline</p>
       )}
-      <div className="flex flex-col">
+      <div>
         {AGENTS.map((agent, i) => (
           <React.Fragment key={agent.key}>
-            <AgentCard
+            <AgentRow
               agent={agent}
               status={agentStatus[agent.key] || 'idle'}
               index={i}
               compact={compact}
             />
             {i < AGENTS.length - 1 && (
-              <PipelineConnector
-                active={agentStatus[agent.key] === 'complete'}
-                compact={compact}
-              />
+              <PipelineConnector fromComplete={agentStatus[agent.key] === 'complete'} />
             )}
           </React.Fragment>
         ))}

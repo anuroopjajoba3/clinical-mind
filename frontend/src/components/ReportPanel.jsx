@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
 
 const LEVEL_COLORS = {
   '1A': 'text-emerald-700 bg-emerald-50 border-emerald-200',
@@ -183,6 +183,116 @@ function InterventionTag({ item }) {
   )
 }
 
+const LEVEL_BADGE = {
+  '1A': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+  '1B': 'bg-blue-100 text-blue-800 border border-blue-200',
+  '2A': 'bg-yellow-100 text-yellow-800 border border-yellow-200',
+  '2B': 'bg-orange-100 text-orange-800 border border-orange-200',
+  '3':  'bg-purple-100 text-purple-800 border border-purple-200',
+  '4':  'bg-gray-100 text-gray-600 border border-gray-200',
+}
+
+function ReferencesSection({ sourcesIndex, onCiteClick }) {
+  const [open, setOpen] = useState(false)
+
+  if (!sourcesIndex || Object.keys(sourcesIndex).length === 0) return null
+
+  // Sort numerically by key (1-based index)
+  const entries = Object.entries(sourcesIndex)
+    .map(([k, v]) => ({ num: parseInt(k, 10), ...v }))
+    .sort((a, b) => a.num - b.num)
+
+  return (
+    <div className="mt-5 pt-5 border-t border-gray-100">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between gap-2 mb-1 group"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-base">📚</span>
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider group-hover:text-gray-700 transition-colors">
+            References
+          </h3>
+          <span className="text-xs text-gray-400 font-normal normal-case">
+            {entries.length} source{entries.length !== 1 ? 's' : ''} cited
+          </span>
+        </div>
+        {open
+          ? <ChevronUp className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+          : <ChevronDown className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+        }
+      </button>
+
+      {open && (
+        <ol className="mt-2 space-y-2 list-none">
+          {entries.map(({ num, title, authors, journal, year, pmid, url, source, evidence_level }) => {
+            const href = pmid && pmid !== 'N/A'
+              ? `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`
+              : url || null
+            const levelClass = LEVEL_BADGE[evidence_level] || LEVEL_BADGE['4']
+
+            return (
+              <li
+                key={num}
+                className="flex gap-3 p-3 rounded-lg bg-gray-50 border border-gray-100
+                           hover:border-blue-200 hover:bg-blue-50/30 transition-colors group/ref"
+              >
+                <button
+                  onClick={() => onCiteClick?.(num - 1)}
+                  className="flex-shrink-0 w-6 h-6 rounded bg-blue-100 text-blue-700
+                             text-xs font-mono font-bold flex items-center justify-center
+                             hover:bg-blue-600 hover:text-white transition-colors"
+                  title="Scroll to evidence card"
+                >
+                  {num}
+                </button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start gap-2">
+                    <p className="flex-1 text-sm font-medium text-gray-900 leading-snug">
+                      {title || 'Untitled'}
+                    </p>
+                    {evidence_level && (
+                      <span className={`flex-shrink-0 text-xs font-bold px-1.5 py-0.5 rounded mt-0.5 ${levelClass}`}>
+                        {evidence_level}
+                      </span>
+                    )}
+                  </div>
+                  {authors && (
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">{authors}</p>
+                  )}
+                  <div className="flex items-center gap-2 mt-1">
+                    {journal && (
+                      <span className="text-xs text-gray-400 italic truncate max-w-[200px]">
+                        {journal}
+                      </span>
+                    )}
+                    {year && year !== 'N/A' && (
+                      <span className="text-xs text-gray-400">{year}</span>
+                    )}
+                    {href && (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="ml-auto flex-shrink-0 flex items-center gap-1 text-xs text-blue-500
+                                   hover:text-blue-700 transition-colors font-medium"
+                      >
+                        {source === 'ClinicalTrials.gov' ? 'ClinicalTrials.gov' : 'PubMed'}
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </li>
+            )
+          })}
+        </ol>
+      )}
+    </div>
+  )
+}
+
 export default function ReportPanel({ report, question, onCiteClick, sourcesIndex, onFollowupClick }) {
   const [copied, setCopied] = useState(false)
 
@@ -210,7 +320,7 @@ ${report.clinical_bottom_line || 'N/A'}
 LIMITATIONS
 ${report.limitations || 'N/A'}
 
-Generated by ClinicalMind — AI Clinical Evidence Synthesis
+Generated by ClinicalMed — AI Clinical Evidence Synthesis
 `
 
   const handleCopy = async () => {
@@ -228,7 +338,7 @@ Generated by ClinicalMind — AI Clinical Evidence Synthesis
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
     a.href     = url
-    a.download = `ClinicalMind_Report_${Date.now()}.txt`
+    a.download = `ClinicalMed_Report_${Date.now()}.txt`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -391,9 +501,12 @@ Generated by ClinicalMind — AI Clinical Evidence Synthesis
           </div>
         )}
 
+        {/* ── REFERENCES — full bibliography of cited sources ── */}
+        <ReferencesSection sourcesIndex={report.sources_index} onCiteClick={onCiteClick} />
+
         {/* Footer */}
         <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
-          <p className="text-xs text-gray-400">Generated by ClinicalMind · AI Clinical Evidence Synthesis</p>
+          <p className="text-xs text-gray-400">Generated by ClinicalMed · AI Clinical Evidence Synthesis</p>
           <p className="text-xs text-gray-400">
             {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
           </p>

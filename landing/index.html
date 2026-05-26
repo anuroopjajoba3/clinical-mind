@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>ClinicalMind — Clinical Intelligence, Built for Medicine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{font-family:'Inter',system-ui,sans-serif;background:#fff;color:#0A0A09;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+    /* ── NAV ── */
+    nav{position:fixed;top:0;left:0;right:0;z-index:200;padding:0 48px;height:68px;display:flex;align-items:center;justify-content:space-between;transition:background .3s,border-color .3s;border-bottom:1px solid transparent}
+    nav.scrolled{background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-color:#E8E4DC}
+    .nlogo{font-family:'Playfair Display',serif;font-size:21px;font-weight:800;color:#0A0A09;text-decoration:none;letter-spacing:-.01em}
+    .nlinks{display:flex;gap:36px;list-style:none}
+    .nlinks a{font-size:14px;font-weight:500;color:#444;text-decoration:none;transition:color .15s}
+    .nlinks a:hover{color:#0A0A09}
+    .nstart{font-size:14px;font-weight:500;color:#0A0A09;text-decoration:none;display:flex;align-items:center;gap:4px}
+    .nstart:hover{opacity:.7}
+
+    /* ── HERO ── */
+    .hero{min-height:100vh;background:linear-gradient(180deg,#9EC8E0 0%,#B6D4E8 12%,#CCE0EF 25%,#DCE9F2 38%,#E8EDE8 52%,#EEE8D8 65%,#F2E6CE 78%,#F5E4C4 88%,#F7E2BC 100%);display:flex;flex-direction:column;padding-top:68px}
+    .hero-inner{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:80px 48px 60px}
+    .hero-h{font-family:'Playfair Display',serif;font-size:clamp(52px,7vw,96px);font-weight:900;line-height:1.0;letter-spacing:-.03em;color:#0A0A09;max-width:1000px;margin:0 auto 24px}
+    .hero-sub{font-size:18px;line-height:1.6;color:#4A4A44;max-width:540px;margin:0 auto 44px}
+    .hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .btn-black{display:inline-flex;align-items:center;gap:8px;background:#0A0A09;color:#fff;font-family:'Courier New',monospace;font-size:13px;font-weight:600;letter-spacing:.02em;padding:12px 24px;border:none;border-radius:4px;cursor:pointer;text-decoration:none;transition:opacity .15s}
+    .btn-black:hover{opacity:.82}
+    .btn-outline{display:inline-flex;align-items:center;gap:8px;background:transparent;color:#0A0A09;font-family:'Courier New',monospace;font-size:13px;font-weight:600;letter-spacing:.02em;padding:11px 24px;border:1.5px solid #0A0A09;border-radius:4px;cursor:pointer;text-decoration:none;transition:all .15s}
+    .btn-outline:hover{background:#0A0A09;color:#fff}
+
+    /* Hero product visual */
+    .hero-visual{width:100%;max-width:980px;margin:0 auto;padding:0 48px}
+    .hv-wrap{background:#fff;border:1.5px solid #D8D2C8;border-radius:12px 12px 0 0;box-shadow:0 8px 60px rgba(0,0,0,.08),0 2px 12px rgba(0,0,0,.06);overflow:hidden}
+    .hv-bar{background:#F2EEE8;padding:12px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #E4DDD4}
+    .hv-dots{display:flex;gap:6px}
+    .hv-dot{width:10px;height:10px;border-radius:50%}
+    .hv-title{font-size:12px;font-weight:500;color:#888;font-family:'Courier New',monospace}
+    .hv-body{padding:24px;background:#FAFAF8}
+    .hv-greeting{font-size:18px;font-weight:700;color:#0A0A09;margin-bottom:4px;font-family:'Playfair Display',serif}
+    .hv-sub-g{font-size:13px;color:#888;margin-bottom:20px}
+    .hv-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    .hv-card{background:#fff;border:1px solid #E8E4DC;border-radius:8px;padding:18px;position:relative}
+    .hv-card-label{font-size:11px;font-family:'Courier New',monospace;color:#888;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+    .hv-big{font-size:32px;font-weight:700;color:#0A0A09;font-family:'Playfair Display',serif;line-height:1}
+    .hv-big small{font-size:16px;font-weight:500;color:#888}
+    .hv-delta{font-size:12px;font-weight:600}
+    .hv-delta.up{color:#16A34A}
+    .hv-delta.down{color:#DC2626}
+    .hv-bar-chart{margin-top:12px;height:48px;display:flex;align-items:flex-end;gap:4px}
+    .hv-bar-c{flex:1;border-radius:3px 3px 0 0;background:#0A0A09;opacity:.12;transition:opacity .2s}
+    .hv-bar-c.active{opacity:1;background:#0A0A09}
+    .hv-badge{position:absolute;top:12px;right:12px;font-size:10px;font-weight:600;padding:3px 8px;border-radius:100px;font-family:'Courier New',monospace;background:#FEF9C3;color:#854D0E}
+    .hv-pipe-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #F0ECE4}
+    .hv-pipe-row:last-child{border-bottom:none}
+    .hv-pnum{width:20px;height:20px;border-radius:50%;font-size:10px;font-weight:700;font-family:'Courier New',monospace;display:flex;align-items:center;justify-content:center}
+    .hv-pnum.done{background:#F0FDF4;color:#16A34A;border:1px solid #BBF7D0}
+    .hv-pnum.run{background:#EFF6FF;color:#2563EB;border:1px solid #BFDBFE}
+    .hv-pnum.idle{background:#F5F4F2;color:#9CA3AF;border:1px solid #E5E7EB}
+    .hv-plabel{flex:1;font-size:12px;font-weight:500}
+    .hv-plabel.done{color:#15803D}
+    .hv-plabel.run{color:#1D4ED8}
+    .hv-plabel.idle{color:#9CA3AF}
+    .spin-dots{display:flex;gap:3px}
+    .spin-dot{width:4px;height:4px;border-radius:50%;background:#2563EB;animation:sdot 1.2s ease-in-out infinite}
+    .spin-dot:nth-child(2){animation-delay:.15s}
+    .spin-dot:nth-child(3){animation-delay:.3s}
+    @keyframes sdot{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
+
+    /* ── SECTION COMMONS ── */
+    section{padding:120px 48px}
+    .container{max-width:1080px;margin:0 auto}
+    .sec-eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#888;margin-bottom:24px}
+    .sec-h{font-family:'Playfair Display',serif;font-size:clamp(36px,4vw,56px);font-weight:800;line-height:1.08;letter-spacing:-.025em;color:#0A0A09;margin-bottom:20px}
+    .sec-sub{font-size:16px;line-height:1.7;color:#555;max-width:480px}
+
+    /* ── FEATURE SECTION (image left, numbered list right) ── */
+    .feat-sec{background:#fff}
+    .feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;margin-top:0}
+    .feat-img-wrap{position:relative;border-radius:8px;overflow:hidden;aspect-ratio:4/5;background:#B8D0E0}
+    .feat-img{width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.1) brightness(.9);mix-blend-mode:multiply}
+    .feat-img-overlay{position:absolute;inset:0;background:rgba(35,90,140,.45);mix-blend-mode:multiply}
+    .feat-float{position:absolute;bottom:24px;left:24px;right:24px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-radius:8px;padding:16px 18px;border:1px solid rgba(255,255,255,.7)}
+    .feat-float-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#888;margin-bottom:6px;font-family:'Courier New',monospace}
+    .feat-float-val{font-size:22px;font-weight:700;color:#0A0A09;font-family:'Playfair Display',serif}
+    .feat-float-sub{font-size:12px;color:#555;margin-top:2px}
+    .feat-list{display:flex;flex-direction:column}
+    .feat-item{display:flex;align-items:flex-start;justify-content:space-between;padding:24px 0;border-bottom:1px solid #E8E4DC;cursor:pointer;transition:all .2s;gap:20px}
+    .feat-item:first-child{padding-top:0}
+    .feat-item:last-child{border-bottom:none}
+    .feat-item-body{flex:1}
+    .feat-item-title{font-size:17px;font-weight:700;color:#0A0A09;margin-bottom:6px;font-family:'Playfair Display',serif}
+    .feat-item-desc{font-size:14px;line-height:1.6;color:#666}
+    .feat-item-num{font-size:12px;font-weight:600;color:#C8C4BA;font-family:'Courier New',monospace;flex-shrink:0;padding-top:3px;letter-spacing:.04em}
+
+    /* ── VALUES / GRAIN SECTION ── */
+    .values-sec{position:relative;overflow:hidden}
+    .values-bg{position:absolute;inset:0;background:#EDE8DA}
+    .values-grain{position:absolute;inset:0;opacity:.55;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='.4'/%3E%3C/svg%3E");background-size:200px}
+    .values-inner{position:relative;z-index:1}
+    .values-h{font-family:'Playfair Display',serif;font-size:clamp(44px,5.5vw,72px);font-weight:900;line-height:1.05;letter-spacing:-.03em;color:#0A0A09;text-align:center;margin-bottom:64px;max-width:700px;margin-left:auto;margin-right:auto}
+    .vals-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+    .val-card{background:#fff;border-radius:8px;padding:36px 32px}
+    .val-icon{width:44px;height:44px;border-radius:50%;border:1.5px solid #D8D4CC;display:flex;align-items:center;justify-content:center;margin-bottom:24px}
+    .val-title{font-size:17px;font-weight:700;color:#0A0A09;margin-bottom:10px;font-family:'Playfair Display',serif}
+    .val-desc{font-size:14px;line-height:1.65;color:#666}
+
+    /* ── CASE STUDY ── */
+    .case-sec{background:#fff}
+    .case-grid{display:grid;grid-template-columns:5fr 4fr;gap:0;border:1.5px solid #E8E4DC;border-radius:12px;overflow:hidden}
+    .case-img-wrap{position:relative;min-height:360px;background:#B8D0E0;overflow:hidden}
+    .case-img{width:100%;height:100%;object-fit:cover;filter:grayscale(1) brightness(.85) contrast(1.1);mix-blend-mode:multiply;display:block}
+    .case-img-tint{position:absolute;inset:0;background:rgba(30,80,140,.45)}
+    .case-body{padding:48px 44px;display:flex;flex-direction:column;justify-content:center;background:#F8F6F2}
+    .case-eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#888;margin-bottom:20px;font-family:'Courier New',monospace}
+    .case-title{font-family:'Playfair Display',serif;font-size:24px;font-weight:800;color:#0A0A09;line-height:1.25;margin-bottom:16px}
+    .case-text{font-size:14px;line-height:1.7;color:#555;margin-bottom:28px}
+    .case-link{font-size:13px;font-weight:600;color:#0A0A09;text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-family:'Courier New',monospace}
+    .case-link::after{content:'→';transition:transform .2s}
+    .case-link:hover::after{transform:translateX(4px)}
+
+    /* ── JOURNAL SECTION ── */
+    .journal-sec{background:#fff;border-top:1.5px solid #E8E4DC}
+    .journal-grid{display:grid;grid-template-columns:1fr 2fr;gap:80px;align-items:start}
+    .journal-badge{width:140px;height:140px;border-radius:50%;border:1.5px solid #0A0A09;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;margin-bottom:32px}
+    .jb-title{font-family:'Playfair Display',serif;font-size:16px;font-weight:800;color:#0A0A09;line-height:1.2}
+    .jb-sub{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#888;margin-top:4px}
+    .journal-h{font-family:'Playfair Display',serif;font-size:clamp(28px,3.5vw,44px);font-weight:800;color:#0A0A09;margin-bottom:12px;letter-spacing:-.02em}
+    .journal-articles{display:flex;flex-direction:column}
+    .jarticle{display:grid;grid-template-columns:80px 1fr;gap:16px;padding:20px 0;border-bottom:1px solid #E8E4DC;text-decoration:none;transition:all .18s}
+    .jarticle:first-child{padding-top:0}
+    .jarticle:last-child{border-bottom:none}
+    .jarticle:hover .ja-title{color:#555}
+    .ja-thumb{width:80px;height:60px;border-radius:6px;object-fit:cover;flex-shrink:0;filter:grayscale(.3)}
+    .ja-thumb-placeholder{width:80px;height:60px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:24px}
+    .ja-eyebrow{font-size:11px;font-weight:600;color:#888;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px;font-family:'Courier New',monospace}
+    .ja-title{font-size:15px;font-weight:700;color:#0A0A09;line-height:1.35;transition:color .15s;font-family:'Playfair Display',serif}
+
+    /* ── CTA ── */
+    .cta-sec{background:#0A0A09;padding:120px 48px;text-align:center}
+    .cta-h{font-family:'Playfair Display',serif;font-size:clamp(44px,5.5vw,72px);font-weight:900;line-height:1.05;letter-spacing:-.03em;color:#fff;margin-bottom:20px}
+    .cta-sub{font-size:17px;color:rgba(255,255,255,.48);line-height:1.65;max-width:480px;margin:0 auto 44px}
+    .cta-form{display:flex;gap:10px;max-width:440px;margin:0 auto}
+    .cta-inp{flex:1;padding:13px 18px;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);border-radius:4px;color:#fff;font-family:'Inter',sans-serif;font-size:14px;outline:none;transition:border-color .2s}
+    .cta-inp::placeholder{color:rgba(255,255,255,.28)}
+    .cta-inp:focus{border-color:rgba(255,255,255,.4)}
+    .btn-white{display:inline-flex;align-items:center;gap:8px;background:#fff;color:#0A0A09;font-family:'Courier New',monospace;font-size:13px;font-weight:600;letter-spacing:.02em;padding:13px 24px;border:none;border-radius:4px;cursor:pointer;text-decoration:none;white-space:nowrap;transition:opacity .15s}
+    .btn-white:hover{opacity:.88}
+    .cta-note{font-size:12px;color:rgba(255,255,255,.28);margin-top:14px;font-family:'Courier New',monospace}
+
+    /* ── FOOTER ── */
+    footer{background:#0A0A09;border-top:1px solid rgba(255,255,255,.06);padding:40px 48px}
+    .footer-inner{max-width:1080px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+    .footer-logo{font-family:'Playfair Display',serif;font-size:18px;font-weight:800;color:rgba(255,255,255,.7)}
+    .footer-links{display:flex;gap:28px}
+    .footer-links a{font-size:12px;color:rgba(255,255,255,.3);text-decoration:none;transition:color .15s;font-family:'Courier New',monospace}
+    .footer-links a:hover{color:rgba(255,255,255,.7)}
+    .footer-copy{font-size:12px;color:rgba(255,255,255,.2);font-family:'Courier New',monospace}
+
+    /* ── TRUST BAR ── */
+    .trust-bar{background:#fff;border-bottom:1px solid #E8E4DC;padding:20px 48px;display:flex;align-items:center;justify-content:center;gap:52px;flex-wrap:wrap}
+    .tb-item{font-size:11px;font-weight:700;color:#A8A49C;letter-spacing:.1em;text-transform:uppercase;font-family:'Courier New',monospace}
+
+    /* ── ASTERISK DECO ── */
+    .astk{font-size:20px;color:#0A0A09}
+
+    /* ── REVEAL ── */
+    .reveal{opacity:0;transform:translateY(20px);transition:opacity .65s cubic-bezier(.22,1,.36,1),transform .65s cubic-bezier(.22,1,.36,1)}
+    .reveal.vis{opacity:1;transform:none}
+    .rd1{transition-delay:.07s}.rd2{transition-delay:.14s}.rd3{transition-delay:.21s}
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:768px){
+      nav{padding:0 20px}.nlinks{display:none}
+      section{padding:80px 20px}.hero-inner{padding:60px 20px 40px}
+      .hero-visual{padding:0 20px}
+      .feat-grid{grid-template-columns:1fr;gap:48px}.feat-img-wrap{aspect-ratio:16/9}
+      .vals-grid{grid-template-columns:1fr}
+      .case-grid{grid-template-columns:1fr}.case-img-wrap{min-height:240px}
+      .journal-grid{grid-template-columns:1fr;gap:40px}
+      .cta-form{flex-direction:column}
+      .hv-grid{grid-template-columns:1fr 1fr}
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="nav">
+  <a href="#" class="nlogo">ClinicalMind</a>
+  <ul class="nlinks">
+    <li><a href="#features">Product</a></li>
+    <li><a href="#evidence">Evidence Engine</a></li>
+    <li><a href="#enterprise">Enterprise</a></li>
+    <li><a href="#journal">Research</a></li>
+  </ul>
+  <a href="#cta" class="nstart">Get started &rarr;</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <h1 class="hero-h">Clinical intelligence,<br/>built for medicine.</h1>
+    <p class="hero-sub">Connect patient context, investigate evidence, surface contradictions, and synthesize clinical reports — with AI that reasons like a clinician.</p>
+    <div class="hero-btns">
+      <a href="#cta" class="btn-black">&#9632; Request a demo</a>
+      <a href="#features" class="btn-outline">&#9632; Explore the platform</a>
+    </div>
+  </div>
+
+  <!-- Product Dashboard Mockup -->
+  <div class="hero-visual">
+    <div class="hv-wrap">
+      <div class="hv-bar">
+        <div class="hv-dots">
+          <div class="hv-dot" style="background:#FF5F57"></div>
+          <div class="hv-dot" style="background:#FEBC2E"></div>
+          <div class="hv-dot" style="background:#28C840"></div>
+        </div>
+        <span class="hv-title">ClinicalMind &mdash; Sarah K. &middot; MRN-00421 &middot; FHIR R4</span>
+      </div>
+      <div class="hv-body">
+        <div class="hv-greeting">Good morning, Dr. Chen</div>
+        <div class="hv-sub-g">Your evidence pipeline for Sarah K. is ready to review.</div>
+        <div class="hv-grid">
+          <!-- Card 1: Evidence -->
+          <div class="hv-card">
+            <div class="hv-card-label">Evidence sources <span class="astk">&#10033;</span></div>
+            <div class="hv-big">17 <small>papers</small></div>
+            <div class="hv-delta up" style="margin-top:6px">&#8593; 14 PubMed &middot; 3 Trials</div>
+            <div class="hv-bar-chart">
+              <div class="hv-bar-c" style="height:40%;opacity:.07"></div>
+              <div class="hv-bar-c" style="height:60%;opacity:.1"></div>
+              <div class="hv-bar-c" style="height:50%;opacity:.09"></div>
+              <div class="hv-bar-c" style="height:80%;opacity:.13"></div>
+              <div class="hv-bar-c" style="height:70%;opacity:.12"></div>
+              <div class="hv-bar-c active" style="height:100%"></div>
+            </div>
+          </div>
+          <!-- Card 2: Agent running -->
+          <div class="hv-card">
+            <div class="hv-card-label">Agent pipeline <span class="astk">&#10033;</span></div>
+            <div style="display:flex;flex-direction:column;gap:0">
+              <div class="hv-pipe-row"><div class="hv-pnum done">01</div><span class="hv-plabel done">FHIR Context</span><span style="font-size:11px;color:#16A34A">&#10003;</span></div>
+              <div class="hv-pipe-row"><div class="hv-pnum done">02</div><span class="hv-plabel done">PICO Extract</span><span style="font-size:11px;color:#16A34A">&#10003;</span></div>
+              <div class="hv-pipe-row"><div class="hv-pnum done">03</div><span class="hv-plabel done">Evidence Search</span><span style="font-size:11px;color:#16A34A">&#10003;</span></div>
+              <div class="hv-pipe-row"><div class="hv-pnum run">04</div><span class="hv-plabel run">Summarizer</span><div class="spin-dots"><div class="spin-dot"></div><div class="spin-dot"></div><div class="spin-dot"></div></div></div>
+              <div class="hv-pipe-row"><div class="hv-pnum idle">05</div><span class="hv-plabel idle">Contradiction</span><span style="color:#D1CDC5;font-size:11px">&mdash;</span></div>
+            </div>
+          </div>
+          <!-- Card 3: Forecast -->
+          <div class="hv-card">
+            <div class="hv-badge">Insight</div>
+            <div class="hv-card-label">Patient memory</div>
+            <div class="hv-big" style="font-size:24px">eGFR</div>
+            <div style="margin-top:8px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:11px;color:#888">Jan 2023</span><span style="font-size:11px;font-weight:600;color:#0A0A09">44 mL/min</span></div>
+              <div style="height:4px;background:#F0EDE8;border-radius:4px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:55%;background:#0A0A09;border-radius:4px"></div></div>
+              <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:#888">Jan 2024</span><span style="font-size:11px;font-weight:700;color:#DC2626">38 mL/min &#8595;</span></div>
+              <div style="height:4px;background:#F0EDE8;border-radius:4px;overflow:hidden;margin-top:8px"><div style="height:100%;width:38%;background:#DC2626;border-radius:4px"></div></div>
+            </div>
+            <div style="margin-top:12px;font-size:12px;color:#888;line-height:1.5">You're 18 months from Stage 4 CKD at current trajectory.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST BAR -->
+<div class="trust-bar">
+  <span class="tb-item">FHIR R4 Native</span>
+  <span class="tb-item">HIPAA Compliant</span>
+  <span class="tb-item">36M+ PubMed Papers</span>
+  <span class="tb-item">8 AI Agents</span>
+  <span class="tb-item">LangGraph Orchestration</span>
+  <span class="tb-item">Real-Time SSE</span>
+</div>
+
+<!-- FEATURE SECTION -->
+<section class="feat-sec reveal" id="features" style="padding-top:120px;padding-bottom:120px">
+  <div class="container">
+    <div style="margin-bottom:64px">
+      <div class="sec-eyebrow">How ClinicalMind works</div>
+      <h2 class="sec-h" style="max-width:640px">Everything you need to read, reason, and act on clinical evidence.</h2>
+    </div>
+    <div class="feat-grid">
+      <!-- Left: Image with floating card -->
+      <div class="feat-img-wrap">
+        <img class="feat-img" src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&q=80&auto=format" alt="Clinical research" onerror="this.style.display='none'"/>
+        <div class="feat-img-overlay"></div>
+        <div class="feat-float">
+          <div class="feat-float-label">Evidence Confidence</div>
+          <div class="feat-float-val">94% &nbsp;<span style="font-size:14px;font-weight:500;color:#555">EMPEROR-Reduced · NEJM 2021</span></div>
+          <div class="feat-float-sub">Level 1A · High relevance to this patient</div>
+        </div>
+      </div>
+      <!-- Right: Numbered list -->
+      <div>
+        <div class="feat-list">
+          <div class="feat-item" data-idx="0">
+            <div class="feat-item-body">
+              <div class="feat-item-title">Connect patient context</div>
+              <div class="feat-item-desc">FHIR R4 integration pulls live patient data — labs, medications, diagnoses, encounter history — directly from your EMR. No copy-paste. No data entry.</div>
+            </div>
+            <div class="feat-item-num">001</div>
+          </div>
+          <div class="feat-item" data-idx="1">
+            <div class="feat-item-body">
+              <div class="feat-item-title">AI builds longitudinal memory</div>
+              <div class="feat-item-desc">Each query enriches a persistent patient memory layer — tracking risk trajectories, flagging critical trends, and surfacing the context that changes which evidence matters most.</div>
+            </div>
+            <div class="feat-item-num">002</div>
+          </div>
+          <div class="feat-item" data-idx="2">
+            <div class="feat-item-body">
+              <div class="feat-item-title">Agents investigate evidence</div>
+              <div class="feat-item-desc">8 specialized agents search PubMed and ClinicalTrials.gov in parallel. Every paper is graded, scored, and ranked for relevance to this specific patient.</div>
+            </div>
+            <div class="feat-item-num">003</div>
+          </div>
+          <div class="feat-item" data-idx="3">
+            <div class="feat-item-body">
+              <div class="feat-item-title">Clinical synthesis generated</div>
+              <div class="feat-item-desc">A structured clinical report streams in real time: bottom line, evidence grading, drug interaction checks, contradiction analysis, and follow-up recommendations.</div>
+            </div>
+            <div class="feat-item-num">004</div>
+          </div>
+        </div>
+        <div style="margin-top:40px">
+          <a href="#cta" class="btn-black">&#9632; Explore features</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VALUES / GRAIN SECTION -->
+<section class="values-sec reveal" style="padding:120px 48px">
+  <div class="values-bg"></div>
+  <div class="values-grain"></div>
+  <div class="container values-inner">
+    <h2 class="values-h">Built for precision.<br/>Designed for care.</h2>
+    <div class="vals-grid">
+      <div class="val-card reveal">
+        <div class="val-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0A0A09" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+        <div class="val-title">Evidence that keeps pace</div>
+        <div class="val-desc">PubMed indexes 2,000+ new papers daily. ClinicalMind searches in real time — not from a static database frozen at training time. Your evidence is always current.</div>
+      </div>
+      <div class="val-card reveal rd1">
+        <div class="val-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0A0A09" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="val-title">Designed for clinical trust</div>
+        <div class="val-desc">Every recommendation carries its evidence chain. Every contradiction is explained. Clinicians see the reasoning — not just the conclusion. Explainable by design.</div>
+      </div>
+      <div class="val-card reveal rd2">
+        <div class="val-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0A0A09" stroke-width="1.5"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+        </div>
+        <div class="val-title">Infrastructure, not a chatbot</div>
+        <div class="val-desc">ClinicalMind is a deterministic reasoning pipeline — not a probabilistic chat interface. LangGraph orchestration means consistent outputs, full audit trails, and reproducible reasoning.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CASE STUDY -->
+<section class="case-sec reveal" id="evidence" style="padding:120px 48px">
+  <div class="container">
+    <div style="margin-bottom:48px">
+      <div class="sec-eyebrow">Case study</div>
+      <h2 class="sec-h" style="max-width:560px">Why Acme Medical chose ClinicalMind</h2>
+    </div>
+    <div class="case-grid">
+      <div class="case-img-wrap">
+        <img class="case-img" src="https://images.unsplash.com/photo-1530026405186-ed1f139313f8?w=900&q=80&auto=format" alt="Clinicians" onerror="this.parentElement.style.background='#B8D0E0'"/>
+        <div class="case-img-tint"></div>
+      </div>
+      <div class="case-body">
+        <div class="case-eyebrow">Internal medicine &middot; 340 clinicians</div>
+        <div class="case-title">With fragmented EMR data and growing evidence volume, Acme Medical turned to ClinicalMind to synthesize clinical intelligence at scale.</div>
+        <div class="case-text">The result: evidence synthesis time dropped from 2 hours to under 4 minutes per patient case. Drug interaction conflicts surfaced before prescribing. And every recommendation now carries a full evidence chain written back to the FHIR record.</div>
+        <a href="#cta" class="case-link">Read case study</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- JOURNAL -->
+<section class="journal-sec reveal" id="journal" style="padding:120px 48px">
+  <div class="container">
+    <div class="journal-grid">
+      <div>
+        <div class="journal-badge">
+          <div class="jb-title">Clinical<br/>Mind</div>
+          <div class="jb-sub">Journal</div>
+        </div>
+        <h2 class="journal-h">From the<br/>research journal</h2>
+        <p style="font-size:14px;line-height:1.7;color:#666;margin-top:12px;margin-bottom:28px">Insights on AI in clinical practice, evidence synthesis methodology, and the future of intelligent healthcare infrastructure.</p>
+        <a href="#" class="btn-black" style="font-size:12px;padding:10px 20px">&#9632; Browse all articles</a>
+      </div>
+      <div class="journal-articles">
+        <a href="#" class="jarticle">
+          <div class="ja-thumb-placeholder" style="background:#E4F4F1">🧬</div>
+          <div>
+            <div class="ja-eyebrow">Evidence Science &middot; 6 min</div>
+            <div class="ja-title">Why PICO Framing Changes Which Evidence You Find — and Which You Miss</div>
+          </div>
+        </a>
+        <a href="#" class="jarticle">
+          <div class="ja-thumb-placeholder" style="background:#EEE9F6">⚡</div>
+          <div>
+            <div class="ja-eyebrow">Research Design &middot; 8 min</div>
+            <div class="ja-title">The Contradiction Problem: When RCTs Disagree and What AI Should Do About It</div>
+          </div>
+        </a>
+        <a href="#" class="jarticle">
+          <div class="ja-thumb-placeholder" style="background:#FEF9C3">📋</div>
+          <div>
+            <div class="ja-eyebrow">Clinical AI &middot; 5 min</div>
+            <div class="ja-title">FHIR R4 as the Memory Layer: How EMR Context Transforms Evidence Relevance</div>
+          </div>
+        </a>
+        <a href="#" class="jarticle">
+          <div class="ja-thumb-placeholder" style="background:#F3EDE3">🔬</div>
+          <div>
+            <div class="ja-eyebrow">Infrastructure &middot; 7 min</div>
+            <div class="ja-title">LangGraph vs Prompt Chains: Why Clinical AI Needs Deterministic Orchestration</div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-sec" id="cta">
+  <h2 class="cta-h">The future of clinical<br/>intelligence starts here.</h2>
+  <p class="cta-sub">Join clinical teams already on the waitlist. Early access includes dedicated onboarding, custom FHIR integration, and direct access to the engineering team.</p>
+  <div class="cta-form">
+    <input type="email" class="cta-inp" placeholder="your@hospital.org"/>
+    <a href="#" class="btn-white">&#9632; Request access</a>
+  </div>
+  <p class="cta-note">No commitment required &middot; HIPAA BAA available &middot; Setup in under 48 hours</p>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <span class="footer-logo">ClinicalMind</span>
+    <div class="footer-links">
+      <a href="#">Privacy</a><a href="#">Terms</a><a href="#">Security</a><a href="#">Docs</a><a href="#">GitHub</a>
+    </div>
+    <span class="footer-copy">&copy; 2024 ClinicalMind. For research use only.</span>
+  </div>
+</footer>
+
+<script>
+  const nav = document.getElementById('nav');
+  addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 20));
+
+  const ro = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('vis'); ro.unobserve(e.target); }
+  }), { threshold: 0.08, rootMargin: '0px 0px -30px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => ro.observe(el));
+</script>
+</body>
+</html>

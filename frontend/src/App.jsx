@@ -1,22 +1,24 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Search, Activity, Brain, BarChart3, FileText,
-  AlertTriangle, CheckCircle, ChevronRight, LogOut, Clock, X,
+  LogOut, X, AlertTriangle, Clock, Search, BarChart3, Brain,
+  ChevronRight, FileText, Zap, ArrowRight, RefreshCw, CheckCheck,
 } from 'lucide-react'
 import { researchAPI, compareAPI, createJobStream, authAPI } from './api'
 import AgentPipeline   from './components/AgentPipeline'
 import EvidenceCard    from './components/EvidenceCard'
 import ReportPanel     from './components/ReportPanel'
-import AuthModal       from './components/AuthModal'
+import AuthScreen      from './components/AuthScreen'
+import AppLoader       from './components/AppLoader'
+import WorkflowStrip   from './components/WorkflowStrip'
 import SearchHistory   from './components/SearchHistory'
-import PatientSelector    from './components/PatientSelector'
 import PatientDetailPanel from './components/PatientDetailPanel'
 import ComparisonPanel    from './components/ComparisonPanel'
 import CDSHooksDemo       from './components/CDSHooksDemo'
-import { AnatomyBackground } from './components/AnatomyBackground'
+import PatientRail        from './components/PatientRail'
+import PatientDashboard   from './components/PatientDashboard'
 
-// ── constants ────────────────────────────────────────────────────
+// ── constants ──────────────────────────────────────────────────────
 const EXAMPLE_QUESTIONS = [
   'What is the efficacy of GLP-1 receptor agonists for type 2 diabetes?',
   'Best treatments for heart failure with reduced ejection fraction?',
@@ -24,51 +26,75 @@ const EXAMPLE_QUESTIONS = [
   'What is the evidence for SGLT2 inhibitors in chronic kidney disease?',
 ]
 
-const ALL_AGENTS = ['fhir', 'pico', 'search', 'summarizer', 'contradiction', 'drug_interaction', 'synthesize', 'followup']
+const ALL_AGENTS = ['fhir','pico','search','summarizer','contradiction','drug_interaction','synthesize','followup']
 
-// ── micro components ─────────────────────────────────────────────
+// ── design tokens ─────────────────────────────────────────────────
+const T = {
+  cream:     '#F7F3EC',
+  white:     '#FFFFFF',
+  navy:      '#0A1628',
+  navyLight: '#1E3A5F',
+  muted:     '#6B7280',
+  border:    '#E5E1D8',
+  borderMid: '#C5BFB3',
+  blue:      '#2563EB',
+  green:     '#10B981',
+  red:       '#EF4444',
+  amber:     '#F59E0B',
+}
+
+// ── motion presets ─────────────────────────────────────────────────
+const fadeUp = {
+  initial:    { opacity: 0, y: 14 },
+  animate:    { opacity: 1, y: 0 },
+  exit:       { opacity: 0, y: -8 },
+  transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
+}
+const fadeIn = {
+  initial:    { opacity: 0 },
+  animate:    { opacity: 1 },
+  exit:       { opacity: 0 },
+  transition: { duration: 0.2 },
+}
+
+// ── sub-components ─────────────────────────────────────────────────
+
 function Spinner() {
   return (
-    <svg className="w-4 h-4 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-    </svg>
+    <motion.span
+      animate={{ rotate: 360 }}
+      transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }}
+      style={{ display: 'inline-block', lineHeight: 1 }}>
+      <RefreshCw size={14} strokeWidth={2.5} />
+    </motion.span>
   )
 }
 
 function PICOBadge({ pico }) {
   if (!pico) return null
   const items = [
-    { label: 'Population',    value: pico.population,    color: 'blue' },
-    { label: 'Intervention',  value: pico.intervention,  color: 'purple' },
-    { label: 'Comparison',    value: pico.comparison,    color: 'emerald' },
-    { label: 'Outcome',       value: pico.outcome,       color: 'amber' },
+    { key: 'P', label: 'Population',   value: pico.population,   cls: 'pico-p' },
+    { key: 'I', label: 'Intervention', value: pico.intervention, cls: 'pico-i' },
+    { key: 'C', label: 'Comparison',   value: pico.comparison,   cls: 'pico-c' },
+    { key: 'O', label: 'Outcome',      value: pico.outcome,      cls: 'pico-o' },
   ]
-  const colors = {
-    blue:    'bg-blue-50 border-blue-100 text-blue-700',
-    purple:  'bg-purple-50 border-purple-100 text-purple-700',
-    emerald: 'bg-emerald-50 border-emerald-100 text-emerald-700',
-    amber:   'bg-amber-50 border-amber-100 text-amber-700',
-  }
   return (
-    <motion.div
-      className="mb-6 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm"
-      initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-    >
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
-          <Brain className="w-5 h-5 text-white" />
-        </div>
-        <div>
-          <p className="font-semibold text-slate-900 text-sm">PICO Framework Extracted</p>
-          <p className="text-xs text-slate-500">Structured clinical question analysis</p>
-        </div>
+    <motion.div className="card-editorial" style={{ padding: '16px 20px' }} {...fadeUp}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <Brain size={15} style={{ color: T.navyLight }} strokeWidth={2} />
+        <span style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.muted }}>
+          PICO Framework
+        </span>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        {items.map(({ label, value, color }) => (
-          <div key={label} className={`p-3 rounded-xl border ${colors[color]}`}>
-            <p className="text-xs font-semibold uppercase tracking-wider mb-1">{label}</p>
-            <p className="text-sm text-slate-700">{value}</p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        {items.map(({ key, label, value, cls }) => (
+          <div key={key} style={{ padding: '10px 12px', borderRadius: 3 }}
+               className={cls}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
+              <span style={{ fontFamily: 'DM Serif Display', fontSize: 18, fontWeight: 400 }}>{key}</span>
+              <span style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.7 }}>{label}</span>
+            </div>
+            <p style={{ fontFamily: 'Inter', fontSize: 12, lineHeight: 1.5, color: T.navy }}>{value}</p>
           </div>
         ))}
       </div>
@@ -79,31 +105,31 @@ function PICOBadge({ pico }) {
 function DrugInteractionAlert({ interactions }) {
   if (!interactions?.length) return null
   const majors = interactions.filter(i => i.severity === 'major')
-  const others = interactions.filter(i => i.severity !== 'major')
   return (
-    <motion.div
-      className="mb-4 bg-red-50 rounded-2xl p-5 border border-red-200"
-      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-    >
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-lg">💊</span>
-        <p className="text-sm font-semibold text-red-800">
+    <motion.div className="alert-red" style={{ padding: '14px 18px' }} {...fadeUp}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <AlertTriangle size={15} style={{ color: T.red }} strokeWidth={2} />
+        <span style={{ fontFamily: 'Inter', fontSize: 13, fontWeight: 600, color: '#991B1B' }}>
           {interactions.length} Drug Interaction{interactions.length > 1 ? 's' : ''} Detected
-        </p>
+        </span>
         {majors.length > 0 && (
-          <span className="text-xs bg-red-200 text-red-800 px-2 py-0.5 rounded-full font-medium">
+          <span className="tag-base" style={{ background: T.red, color: '#fff' }}>
             {majors.length} major
           </span>
         )}
       </div>
-      {interactions.map((d, i) => (
-        <div key={i} className="flex items-start gap-2 text-sm text-red-700 mt-2">
-          <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${
-            d.severity === 'major' ? 'bg-red-200 text-red-900' : 'bg-red-100 text-red-700'
-          }`}>{d.severity}</span>
-          <span>{d.description}</span>
-        </div>
-      ))}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {interactions.map((d, i) => (
+          <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+            <span className="tag-base" style={{
+              background: d.severity === 'major' ? T.red : '#FCA5A5',
+              color: d.severity === 'major' ? '#fff' : '#7F1D1D',
+              flexShrink: 0, marginTop: 1,
+            }}>{d.severity}</span>
+            <span style={{ fontFamily: 'Inter', fontSize: 12, color: '#7F1D1D', lineHeight: 1.5 }}>{d.description}</span>
+          </div>
+        ))}
+      </div>
     </motion.div>
   )
 }
@@ -111,60 +137,79 @@ function DrugInteractionAlert({ interactions }) {
 function ContradictionAlert({ contradictions }) {
   if (!contradictions?.length) return null
   return (
-    <motion.div
-      className="mb-4 bg-amber-50 rounded-2xl p-5 border border-amber-200"
-      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-    >
-      <div className="flex items-center gap-2 mb-3">
-        <AlertTriangle className="w-4 h-4 text-amber-600" />
-        <p className="text-sm font-semibold text-amber-800">
-          {contradictions.length} Conflicting Finding{contradictions.length > 1 ? 's' : ''} Detected
-        </p>
+    <motion.div className="alert-amber" style={{ padding: '14px 18px' }} {...fadeUp}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <Zap size={15} style={{ color: T.amber }} strokeWidth={2} />
+        <span style={{ fontFamily: 'Inter', fontSize: 13, fontWeight: 600, color: '#92400E' }}>
+          {contradictions.length} Conflicting Finding{contradictions.length > 1 ? 's' : ''}
+        </span>
       </div>
-      {contradictions.map((c, i) => (
-        <div key={i} className="flex items-start gap-2 text-sm text-amber-700 mt-1">
-          <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${
-            c.severity === 'major' ? 'bg-amber-200 text-amber-800' : 'bg-amber-100 text-amber-700'
-          }`}>{c.severity}</span>
-          <span>{c.conflict}</span>
-        </div>
-      ))}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {contradictions.map((c, i) => (
+          <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+            <span className="tag-base" style={{
+              background: c.severity === 'major' ? T.amber : '#FDE68A',
+              color: c.severity === 'major' ? '#fff' : '#78350F',
+              flexShrink: 0, marginTop: 1,
+            }}>{c.severity}</span>
+            <span style={{ fontFamily: 'Inter', fontSize: 12, color: '#78350F', lineHeight: 1.5 }}>{c.conflict}</span>
+          </div>
+        ))}
+      </div>
     </motion.div>
   )
 }
 
-// ── main app ─────────────────────────────────────────────────────
+function ErrorBanner({ msg }) {
+  return (
+    <motion.div className="alert-red" style={{ padding: '14px 18px', display: 'flex', alignItems: 'flex-start', gap: 10 }}
+      {...fadeUp}>
+      <AlertTriangle size={15} style={{ color: T.red, flexShrink: 0, marginTop: 1 }} />
+      <div>
+        <p style={{ fontFamily: 'Inter', fontSize: 13, fontWeight: 600, color: '#991B1B' }}>Error</p>
+        <p style={{ fontFamily: 'Inter', fontSize: 12, color: '#7F1D1D', marginTop: 3, lineHeight: 1.5 }}>{msg}</p>
+      </div>
+    </motion.div>
+  )
+}
+
+// ── main app ───────────────────────────────────────────────────────
 export default function App() {
   const [question, setQuestion]               = useState('')
   const [fhirPatientId, setFhirPatientId]     = useState(null)
-  const [selectedPatient, setSelectedPatient] = useState(null)   // full patient object for suggestions
+  const [selectedPatient, setSelectedPatient] = useState(null)
   const [jobStatus, setJobStatus]             = useState(null)
   const [isSubmitting, setIsSubmitting]       = useState(false)
   const [error, setError]                     = useState(null)
   const [user, setUser]                       = useState(null)
-  const [showAuth, setShowAuth]               = useState(false)
+  const [authReady, setAuthReady]             = useState(false)
   const [showHistory, setShowHistory]         = useState(false)
-  const [detailPatientId, setDetailPatientId]   = useState(null)
-  // Session memory: keyed by patientId (or '__global__' for no patient)
-  const [sessionMemory, setSessionMemory]       = useState({})
-  // Evidence provenance: which source card is highlighted
+  const [detailPatientId, setDetailPatientId] = useState(null)
+  const [sessionMemory, setSessionMemory]     = useState({})
   const [highlightedSource, setHighlightedSource] = useState(null)
   const highlightTimerRef = useRef(null)
-  const streamRef = useRef(null)
+  const streamRef    = useRef(null)
   const searchBarRef = useRef(null)
-  // Comparison mode
   const [compareMode, setCompareMode]     = useState(false)
   const [questionB, setQuestionB]         = useState('')
   const [compareStatus, setCompareStatus] = useState(null)
   const comparePollerRef = useRef(null)
+  const [mainView, setMainView] = useState('search')
+  const [searchFocused, setSearchFocused] = useState(false)
 
   useEffect(() => {
     const token = sessionStorage.getItem('cm_token')
-    if (token) {
-      authAPI.me()
-        .then(r => setUser({ email: r.data.email, name: r.data.full_name || r.data.email.split('@')[0] }))
-        .catch(() => sessionStorage.removeItem('cm_token'))
+    if (!token) {
+      setAuthReady(true)
+      return
     }
+    authAPI.me()
+      .then(r => setUser({
+        email: r.data.email,
+        name: r.data.full_name || r.data.email.split('@')[0],
+      }))
+      .catch(() => sessionStorage.removeItem('cm_token'))
+      .finally(() => setAuthReady(true))
   }, [])
 
   const stopStream = () => {
@@ -174,16 +219,13 @@ export default function App() {
   const handleJobData = useCallback((data) => {
     setJobStatus(prev => {
       const next = prev ? { ...prev, ...data } : data
-      // When a job completes successfully, save it to session memory
       if (data.status === 'complete' && data.report && Object.keys(data.report).length > 0) {
-        const key = fhirPatientId || '__global__'
-        const answer = data.report.clinical_bottom_line
-          || data.report.summary
-          || 'Evidence synthesis complete.'
+        const key    = fhirPatientId || '__global__'
+        const answer = data.report.clinical_bottom_line || data.report.summary || 'Evidence synthesis complete.'
         setSessionMemory(mem => {
           const existing = mem[key] || []
-          const entry = { question: next.question || '', answer: String(answer).slice(0, 400) }
-          return { ...mem, [key]: [...existing.slice(-4), entry] }  // keep last 5
+          const entry    = { question: next.question || '', answer: String(answer).slice(0, 400) }
+          return { ...mem, [key]: [...existing.slice(-4), entry] }
         })
       }
       return next
@@ -196,19 +238,14 @@ export default function App() {
   }, [fhirPatientId])
 
   const handleCiteClick = (index) => {
-    // Clear any pending highlight timer
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
     setHighlightedSource(index)
-    // Scroll to the evidence card
     const el = document.getElementById(`source-${index}`)
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    // Clear highlight after 2.5s
     highlightTimerRef.current = setTimeout(() => setHighlightedSource(null), 2500)
   }
 
   const handleFollowupClick = (q) => {
-    // Pre-fill the question and scroll to search bar without clearing the current
-    // report — the user can read the suggestion before deciding to run it.
     setQuestion(q)
     setTimeout(() => {
       searchBarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -233,8 +270,7 @@ export default function App() {
           const r = await compareAPI.status(compare_id)
           setCompareStatus(r.data)
           if (r.data.status === 'complete' || r.data.status === 'error') {
-            stopComparePoller()
-            setIsSubmitting(false)
+            stopComparePoller(); setIsSubmitting(false)
             if (r.data.error) setError(r.data.error)
           }
         } catch { stopComparePoller(); setIsSubmitting(false) }
@@ -251,8 +287,8 @@ export default function App() {
     setError(null); setJobStatus(null); setIsSubmitting(true); stopStream()
     try {
       const sessionKey = fhirPatientId || '__global__'
-      const history = sessionMemory[sessionKey] || []
-      const res = await researchAPI.start(question.trim(), fhirPatientId, history)
+      const history    = sessionMemory[sessionKey] || []
+      const res        = await researchAPI.start(question.trim(), fhirPatientId, history)
       const { job_id } = res.data
       setJobStatus({
         job_id, status: 'pending', question: question.trim(),
@@ -278,46 +314,25 @@ export default function App() {
     setFhirPatientId(patient?.fhir_id ?? null)
   }
 
-  // Derive smart question suggestions from the patient's active risk flags
   const smartSuggestions = (() => {
     if (!selectedPatient?.risk?.flags?.length) return []
-    const flags   = selectedPatient.risk.flags
-    const conds   = selectedPatient.active_conditions || []
-    const name    = selectedPatient.full_name?.split(' ')[0] || 'this patient'
-
+    const flags = selectedPatient.risk.flags
+    const conds = selectedPatient.active_conditions || []
     const suggestions = []
-
-    // eGFR / CKD flags
     const egfrFlag = flags.find(f => /eGFR/i.test(f))
     if (egfrFlag) {
       const match = egfrFlag.match(/eGFR\s*([\d.]+)/i)
-      const egfr  = match ? match[1] : '42'
-      suggestions.push(`What is the evidence for slowing CKD progression in T2DM with eGFR ${egfr}?`)
+      suggestions.push(`What is the evidence for slowing CKD progression in T2DM with eGFR ${match ? match[1] : '42'}?`)
     }
-
-    // HbA1c flags
-    const hba1cFlag = flags.find(f => /HbA1c/i.test(f))
-    if (hba1cFlag) {
+    if (flags.find(f => /HbA1c/i.test(f)))
       suggestions.push("What is the optimal HbA1c target for elderly patients with type 2 diabetes and CKD?")
-    }
-
-    // Drug interaction / medication flag
     const medFlag = flags.find(f => /metformin|NSAID|ACE|ARB|statin/i.test(f))
-    if (medFlag) {
+    if (medFlag)
       suggestions.push(`What are the risks of ${medFlag.match(/metformin|NSAID|ACE inhibitor|ARB|statin/i)?.[0] || 'this medication'} in patients with reduced kidney function?`)
-    }
-
-    // NT-proBNP / heart failure
-    const bnpFlag = flags.find(f => /NT-proBNP|heart failure/i.test(f))
-    if (bnpFlag) {
+    if (flags.find(f => /NT-proBNP|heart failure/i.test(f)))
       suggestions.push("What does elevated NT-proBNP indicate and how should it be managed in outpatient CKD?")
-    }
-
-    // Generic fallback from conditions if no specific flags matched
-    if (suggestions.length === 0 && conds.length > 0) {
+    if (suggestions.length === 0 && conds.length > 0)
       suggestions.push(`What is the best evidence-based management of ${conds[0]} in 2024?`)
-    }
-
     return suggestions.slice(0, 3)
   })()
 
@@ -325,507 +340,593 @@ export default function App() {
     stopStream(); stopComparePoller()
     setJobStatus(null); setCompareStatus(null)
     setError(null); setIsSubmitting(false); setQuestion(''); setQuestionB('')
+    if (selectedPatient) setMainView('dashboard')
   }
-  const handleLogout = () => { sessionStorage.removeItem('cm_token'); setUser(null) }
-  const loadHistory = async (job_id) => {
+  const handleLogout = () => {
+    stopStream()
+    stopComparePoller()
+    sessionStorage.removeItem('cm_token')
+    setUser(null)
+    setJobStatus(null)
+    setCompareStatus(null)
+    setSelectedPatient(null)
+    setFhirPatientId(null)
+    setMainView('search')
+  }
+  const loadHistory   = async (job_id) => {
     setShowHistory(false)
     try { const r = await researchAPI.status(job_id); setJobStatus(r.data); setQuestion(r.data.question) } catch {}
   }
 
-  // A non-empty report means synthesis is done regardless of whether the final
-  // "status: complete" SSE event arrived (it can be missed on reconnect).
-  const hasFullReport = Boolean(jobStatus?.report && Object.keys(jobStatus.report).length > 0)
-  const isEffectivelyDone = hasFullReport || ['complete', 'error'].includes(jobStatus?.status)
-  const isRunning  = !isEffectivelyDone && (isSubmitting || (jobStatus && !['complete','error'].includes(jobStatus?.status)))
-  const isComplete = isEffectivelyDone && !jobStatus?.error
+  const hasFullReport      = Boolean(jobStatus?.report && Object.keys(jobStatus.report).length > 0)
+  const isEffectivelyDone  = hasFullReport || ['complete','error'].includes(jobStatus?.status)
+  const isRunning          = !isEffectivelyDone && (isSubmitting || (jobStatus && !['complete','error'].includes(jobStatus?.status)))
+  const isComplete         = isEffectivelyDone && !jobStatus?.error
+
+  if (!authReady) return <AppLoader />
+  if (!user) return <AuthScreen onAuthenticated={setUser} />
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-white via-blue-50/30 to-purple-50/30 relative overflow-x-hidden">
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: '#FAF8F4' }}>
 
-      {/* Animated anatomy background */}
-      <AnatomyBackground />
+      {/* ── LEFT RAIL ── */}
+      <PatientRail
+        selectedPatient={selectedPatient}
+        onSelectPatient={p => {
+          setSelectedPatient(p)
+          handlePatientSelected(p)
+          setMainView('dashboard')
+        }}
+        onNewSearch={() => { handleReset(); setMainView('search') }}
+      />
 
-      {/* Floating particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {Array.from({ length: 12 }).map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 bg-blue-400/30 rounded-full"
-            style={{ left: `${(i * 7.3 + 5) % 100}%`, top: `${(i * 11.7 + 10) % 100}%` }}
-            animate={{ y: [0, -80, -160], opacity: [0, 0.6, 0], scale: [0, 1, 0] }}
-            transition={{ duration: 7 + i * 0.5, delay: i * 0.8, repeat: Infinity, ease: 'linear' }}
-          />
-        ))}
-      </div>
+      {/* ── MAIN AREA ── */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
-
-        {/* ── HEADER ─────────────────────────────────────────── */}
+        {/* ── TOP BAR ── */}
         <motion.header
-          className="flex items-center justify-between mb-16"
-          initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+          initial={{ y: -8, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          className="h-[60px] flex-shrink-0 flex items-center justify-between px-6 bg-white/90 backdrop-blur-md border-b border-[#E8E4DC]"
         >
+          <a href="/" className="flex items-center gap-2.5 group">
+            <motion.div
+              className="w-8 h-8 rounded-lg bg-ink flex items-center justify-center text-white text-sm"
+              whileHover={{ scale: 1.05 }}
+            >
+              ⚕
+            </motion.div>
+            <span className="font-serif text-lg font-extrabold text-ink tracking-tight">ClinicalMed</span>
+          </a>
+
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-sm">
-              <Activity className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-slate-900">ClinicalMind</h1>
-              <p className="text-xs text-slate-500">AI-powered clinical research</p>
-            </div>
-          </div>
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setShowHistory(true)}
+              className="inline-flex items-center gap-2 font-sans text-xs font-medium text-[#555] px-3 py-2 rounded-lg border border-[#E8E4DC] bg-[#FAFAF8] hover:border-[#5B8F85]/40 transition-colors"
+            >
+              <Clock size={14} strokeWidth={1.75} />
+              History
+            </motion.button>
 
-          <div className="flex items-center gap-6">
-            <div className="hidden md:flex items-center gap-2 text-xs text-slate-500">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              PubMed · ClinicalTrials.gov · FHIR R4
-            </div>
-
-            {user ? (
-              <div className="flex items-center gap-2">
-                <motion.button
-                  onClick={() => setShowHistory(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900
-                             bg-white border border-slate-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all"
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                >
-                  <Clock className="w-3.5 h-3.5" /> History
-                </motion.button>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg">
-                  <span className="text-sm text-slate-700 font-medium">{user.name}</span>
-                  <button onClick={handleLogout} className="text-slate-400 hover:text-slate-600 transition-colors">
-                    <LogOut className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+            <div className="flex items-center gap-2 pl-2 border-l border-[#E8E4DC]">
+              <div className="w-8 h-8 rounded-full bg-[#5B8F85] flex items-center justify-center text-white font-sans text-xs font-semibold">
+                {user.name?.charAt(0).toUpperCase() || 'U'}
               </div>
-            ) : (
+              <span className="font-sans text-sm font-medium text-ink hidden sm:inline">{user.name}</span>
               <motion.button
-                onClick={() => setShowAuth(true)}
-                className="px-5 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm font-medium rounded-lg shadow-sm"
-                whileHover={{ scale: 1.03, shadow: 'lg' }} whileTap={{ scale: 0.97 }}
+                type="button"
+                onClick={handleLogout}
+                className="p-2 text-[#888] hover:text-ink rounded-lg hover:bg-[#F4F0E8] transition-colors"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                title="Sign out"
               >
-                Sign In
+                <LogOut size={16} strokeWidth={1.75} />
               </motion.button>
-            )}
+            </div>
           </div>
         </motion.header>
 
-        {/* ── HOMEPAGE DASHBOARD ─────────────────────────────── */}
-        <AnimatePresence>
-          {!jobStatus && !compareStatus && (
+        {/* ── CONTENT ── */}
+        <AnimatePresence mode="wait" initial={false}>
+          {mainView === 'dashboard' && selectedPatient ? (
+            <motion.div key="dashboard" style={{ flex: 1, overflow: 'hidden' }}
+              {...fadeIn}>
+              <PatientDashboard
+                patient={selectedPatient}
+                onOpenInsight={ins => ins?.job_id && loadHistory(ins.job_id)}
+                onSearchEvidence={() => setMainView('search')}
+              />
+            </motion.div>
+          ) : (
             <motion.div
-              className="mb-10"
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.5 }}
+              key="search"
+              className="flex-1 overflow-y-auto bg-gradient-to-b from-[#FAF8F4] via-[#F7F3EC] to-[#F4F0E8]"
+              {...fadeIn}
             >
-              {/* Two-column layout: patients left, search right */}
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+              <div className="max-w-[760px] mx-auto px-6 py-10 pb-16">
 
-                {/* ── LEFT: Patient Dashboard Panel ── */}
-                <motion.div
-                  className="lg:col-span-2"
-                  initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  <div className="mb-3 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Patient Dashboard</p>
-                  </div>
-                  <PatientSelector
-                    onPatientSelected={handlePatientSelected}
-                    onViewDetail={setDetailPatientId}
-                  />
-                </motion.div>
+                {/* ── EMPTY STATE / SEARCH ── */}
+                <AnimatePresence>
+                  {!jobStatus && !compareStatus && (
+                    <motion.div {...fadeUp} key="empty-state">
+                      {!selectedPatient && <WorkflowStrip />}
 
-                {/* ── RIGHT: Search + suggestions ── */}
-                <motion.div
-                  className="lg:col-span-3"
-                  initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.25 }}
-                >
-                  {/* Compact headline */}
-                  <div className="mb-5">
-                    <h2 className="text-3xl font-extrabold text-slate-900 leading-tight">
-                      Evidence-Based Answers
-                      <span className="ml-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                        in Seconds
-                      </span>
-                    </h2>
-                    <p className="text-sm text-slate-500 mt-1">
-                      Select a patient, then ask a clinical question.
-                    </p>
-                  </div>
-
-                  {/* Search box */}
-                  <form onSubmit={compareMode ? (e) => { e.preventDefault(); handleCompareSubmit() } : handleSubmit} className="mb-3">
-                    <div className="relative group">
-                      <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition-opacity duration-300" />
-                      <div className="relative bg-white rounded-2xl shadow-lg border border-slate-200 p-2 hover:shadow-xl transition-shadow">
-
-                        {/* Question A (always shown) */}
-                        <div className="flex items-start gap-3 px-4 pt-3 pb-1">
-                          {compareMode
-                            ? <span className="w-5 h-5 mt-1 shrink-0 flex items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold">A</span>
-                            : <Search className="w-5 h-5 text-slate-400 mt-1 shrink-0" />
-                          }
-                          <textarea
-                            ref={searchBarRef}
-                            value={question}
-                            onChange={e => setQuestion(e.target.value)}
-                            placeholder={compareMode ? "First treatment or question…" : "e.g. What is the efficacy of metformin for type 2 diabetes prevention?"}
-                            rows={2}
-                            className="flex-1 bg-transparent text-slate-900 placeholder-slate-400 resize-none focus:outline-none leading-relaxed text-sm"
-                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !compareMode) { e.preventDefault(); handleSubmit() } }}
-                          />
-                        </div>
-
-                        {/* Question B — slides in when compareMode */}
-                        <AnimatePresence>
-                          {compareMode && (
-                            <motion.div
-                              className="flex items-start gap-3 px-4 pt-2 pb-1 border-t border-slate-100 mt-1"
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              transition={{ duration: 0.2 }}
-                            >
-                              <span className="w-5 h-5 mt-1 shrink-0 flex items-center justify-center rounded-full bg-purple-600 text-white text-xs font-bold">B</span>
-                              <textarea
-                                value={questionB}
-                                onChange={e => setQuestionB(e.target.value)}
-                                placeholder="Second treatment or question to compare…"
-                                rows={2}
-                                className="flex-1 bg-transparent text-slate-900 placeholder-slate-400 resize-none focus:outline-none leading-relaxed text-sm"
-                              />
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-
-                        <div className="flex items-center justify-between px-4 py-2">
-                          {/* Compare toggle */}
-                          <button
-                            type="button"
-                            onClick={() => { setCompareMode(m => !m); setQuestionB('') }}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all
-                              ${compareMode
-                                ? 'bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100'
-                                : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600'
-                              }`}
-                          >
-                            <span>⚖️</span>
-                            {compareMode ? 'Cancel compare' : 'Compare two'}
-                          </button>
-
-                          <motion.button
-                            type="submit"
-                            disabled={!question.trim() || (compareMode && !questionB.trim()) || isSubmitting}
-                            className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-blue-500 to-purple-600
-                                       text-white text-sm font-medium rounded-xl shadow-sm disabled:opacity-50"
-                            whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                          >
-                            {isSubmitting
-                              ? <><Spinner />{compareMode ? 'Comparing…' : 'Analysing…'}</>
-                              : compareMode
-                                ? <>⚖️ Compare <ChevronRight className="w-4 h-4" /></>
-                                : <>Research <ChevronRight className="w-4 h-4" /></>
-                            }
-                          </motion.button>
-                        </div>
-                      </div>
-                    </div>
-                  </form>
-
-                  {/* Session memory indicator */}
-                  {(() => {
-                    const key = fhirPatientId || '__global__'
-                    const history = sessionMemory[key] || []
-                    return history.length > 0 ? (
-                      <motion.div
-                        className="mb-3 flex items-center justify-between px-4 py-2.5 bg-indigo-50 border border-indigo-200 rounded-xl"
-                        initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-                      >
-                        <div className="flex items-center gap-2 text-xs text-indigo-700">
-                          <Brain className="w-3.5 h-3.5" />
-                          <span className="font-medium">Session memory active</span>
-                          <span className="text-indigo-500">· {history.length} prior {history.length === 1 ? 'query' : 'queries'} in context</span>
-                        </div>
-                        <button
-                          onClick={() => setSessionMemory(m => ({ ...m, [key]: [] }))}
-                          className="text-xs text-indigo-400 hover:text-indigo-700 transition-colors"
+                      <div className="mb-8">
+                        <motion.h1
+                          className="font-serif text-[2.35rem] font-black text-ink leading-[1.1] tracking-tight mb-3"
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                         >
-                          Clear
-                        </button>
-                      </motion.div>
-                    ) : null
-                  })()}
+                          {selectedPatient ? (
+                            <>
+                              Evidence for{' '}
+                              <em className="italic text-[#5B8F85]">{selectedPatient.full_name}</em>
+                            </>
+                          ) : (
+                            'Run a clinical evidence search'
+                          )}
+                        </motion.h1>
+                        <motion.p
+                          className="font-sans text-[15px] text-[#555] leading-relaxed max-w-lg"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.1, duration: 0.4 }}
+                        >
+                          {selectedPatient
+                            ? "LangGraph agents will use this patient's FHIR context, search PubMed and trials, and stream a synthesis."
+                            : 'Select a patient in the rail, or search globally. Eight agents · live SSE · EMR write-back.'}
+                        </motion.p>
+                      </div>
 
-                  {/* Smart question suggestions from patient risk flags */}
-                  <AnimatePresence>
-                    {smartSuggestions.length > 0 && (
-                      <motion.div
-                        className="mb-4"
-                        initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                          <span>⚡</span> Suggested from {selectedPatient?.full_name?.split(' ')[0]}'s risk flags
-                        </p>
-                        <div className="flex flex-col gap-2">
-                          {smartSuggestions.map((q, i) => (
-                            <motion.button
-                              key={i}
-                              onClick={() => setQuestion(q)}
-                              className="group text-left px-4 py-3 bg-amber-50 rounded-xl border border-amber-200
-                                         hover:border-amber-400 hover:shadow-sm transition-all"
-                              initial={{ opacity: 0, x: -12 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: i * 0.07 }}
-                              whileHover={{ x: 3 }}
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-sm text-amber-900 group-hover:text-amber-950">{q}</span>
-                                <Search className="w-3 h-3 text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                              </div>
+                      {/* Search box */}
+                      <motion.form
+                        onSubmit={compareMode ? (e) => { e.preventDefault(); handleCompareSubmit() } : handleSubmit}
+                        style={{ marginBottom: 20 }}
+                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.18, duration: 0.4 }}>
+                        <motion.div
+                          layout
+                          className="bg-white rounded-xl overflow-hidden transition-shadow duration-300"
+                          style={{
+                            border: `1.5px solid ${searchFocused ? '#5B8F85' : '#E8E4DC'}`,
+                            boxShadow: searchFocused
+                              ? '0 0 0 3px rgba(91, 143, 133, 0.12), 0 8px 32px rgba(10, 22, 40, 0.08)'
+                              : '0 4px 24px rgba(10, 22, 40, 0.06)',
+                          }}
+                        >
+
+                          {/* Question A */}
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '16px 18px 12px' }}>
+                            {compareMode ? (
+                              <span style={{
+                                width: 22, height: 22, borderRadius: '50%',
+                                background: '#EFF6FF', border: '1.5px solid #3B82F6',
+                                color: '#2563EB', fontFamily: 'Inter', fontSize: 11, fontWeight: 700,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexShrink: 0, marginTop: 3,
+                              }}>A</span>
+                            ) : (
+                              <Search size={15} style={{ color: T.muted, flexShrink: 0, marginTop: 4 }} strokeWidth={2} />
+                            )}
+                            <textarea
+                              ref={searchBarRef}
+                              value={question}
+                              onChange={e => setQuestion(e.target.value)}
+                              onFocus={() => setSearchFocused(true)}
+                              onBlur={() => setSearchFocused(false)}
+                              placeholder={compareMode
+                                ? "First treatment or clinical question…"
+                                : "e.g. What is the evidence for GLP-1 agonists in type 2 diabetes management?"}
+                              rows={2}
+                              style={{
+                                flex: 1, background: 'transparent', resize: 'none',
+                                border: 'none', outline: 'none',
+                                fontFamily: 'Inter', fontSize: 14, color: T.navy,
+                                lineHeight: 1.6, caretColor: T.blue,
+                              }}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' && !e.shiftKey && !compareMode) {
+                                  e.preventDefault(); handleSubmit()
+                                }
+                              }}
+                            />
+                          </div>
+
+                          {/* Question B (compare mode) */}
+                          <AnimatePresence>
+                            {compareMode && (
+                              <motion.div
+                                style={{
+                                  display: 'flex', alignItems: 'flex-start', gap: 12,
+                                  padding: '10px 18px 12px',
+                                  borderTop: `1px solid ${T.border}`,
+                                }}
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.2 }}>
+                                <span style={{
+                                  width: 22, height: 22, borderRadius: '50%',
+                                  background: '#FDF4FF', border: '1.5px solid #7C3AED',
+                                  color: '#7C3AED', fontFamily: 'Inter', fontSize: 11, fontWeight: 700,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  flexShrink: 0, marginTop: 3,
+                                }}>B</span>
+                                <textarea
+                                  value={questionB}
+                                  onChange={e => setQuestionB(e.target.value)}
+                                  placeholder="Second treatment or question to compare…"
+                                  rows={2}
+                                  style={{
+                                    flex: 1, background: 'transparent', resize: 'none',
+                                    border: 'none', outline: 'none',
+                                    fontFamily: 'Inter', fontSize: 14, color: T.navy, lineHeight: 1.6,
+                                  }}
+                                />
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+
+                          {/* Bottom bar */}
+                          <div style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '10px 18px',
+                            borderTop: `1px solid ${T.border}`,
+                          }}>
+                            <motion.button type="button"
+                              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                              onClick={() => { setCompareMode(m => !m); setQuestionB('') }}
+                              className="btn-ghost"
+                              style={{
+                                fontSize: 12, padding: '5px 12px',
+                                ...(compareMode ? { borderColor: '#7C3AED', color: '#7C3AED' } : {}),
+                              }}>
+                              <BarChart3 size={13} strokeWidth={2} />
+                              {compareMode ? 'Cancel compare' : 'Compare two'}
                             </motion.button>
+
+                            <motion.button
+                              type="submit"
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.97 }}
+                              disabled={!question.trim() || (compareMode && !questionB.trim()) || isSubmitting}
+                              className="inline-flex items-center gap-2 bg-ink text-white font-sans text-sm font-semibold px-5 py-2.5 rounded-lg disabled:opacity-40 transition-opacity"
+                            >
+                              {isSubmitting
+                                ? <><Spinner /> Searching…</>
+                                : compareMode
+                                  ? <><BarChart3 size={13} /> Compare</>
+                                  : <><Search size={13} /> Search Evidence <ArrowRight size={12} /></>
+                              }
+                            </motion.button>
+                          </div>
+                        </motion.div>
+                      </motion.form>
+
+                      {/* Session memory pill */}
+                      {(() => {
+                        const key = fhirPatientId || '__global__'
+                        const history = sessionMemory[key] || []
+                        return history.length > 0 ? (
+                          <motion.div
+                            style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                              padding: '8px 14px', marginBottom: 16, borderRadius: 4,
+                              background: '#EFF6FF', border: '1px solid #BFDBFE',
+                            }}
+                            initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Brain size={12} style={{ color: T.blue }} strokeWidth={2} />
+                              <span style={{ fontFamily: 'Inter', fontSize: 12, color: '#1D4ED8' }}>
+                                Session memory active · {history.length} prior {history.length === 1 ? 'query' : 'queries'} in context
+                              </span>
+                            </div>
+                            <button onClick={() => setSessionMemory(m => ({ ...m, [key]: [] }))}
+                                    style={{ fontFamily: 'Inter', fontSize: 11, color: T.blue, background: 'none', border: 'none', cursor: 'pointer' }}>
+                              Clear
+                            </button>
+                          </motion.div>
+                        ) : null
+                      })()}
+
+                      {/* Smart suggestions */}
+                      <AnimatePresence>
+                        {smartSuggestions.length > 0 && (
+                          <motion.div style={{ marginBottom: 16 }}
+                            initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}>
+                            <p className="section-label" style={{ marginBottom: 8 }}>
+                              Suggested from {selectedPatient?.full_name?.split(' ')[0]}'s risk flags
+                            </p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {smartSuggestions.map((q, i) => (
+                                <motion.button key={i} onClick={() => setQuestion(q)}
+                                  className="card-editorial-hover"
+                                  style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    padding: '10px 14px', textAlign: 'left', cursor: 'pointer',
+                                    background: '#FFFBEB', borderColor: '#FDE68A', width: '100%',
+                                  }}
+                                  initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: i * 0.06 }}
+                                  whileHover={{ x: 3 }}>
+                                  <span style={{ fontFamily: 'Inter', fontSize: 13, color: '#78350F', lineHeight: 1.5 }}>{q}</span>
+                                  <ChevronRight size={14} style={{ color: '#B45309', flexShrink: 0 }} />
+                                </motion.button>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {/* Example questions */}
+                      {smartSuggestions.length === 0 && (
+                        <motion.div
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                          transition={{ delay: 0.3, duration: 0.4 }}>
+                          <p className="section-label" style={{ marginBottom: 10 }}>Try these questions</p>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                            {EXAMPLE_QUESTIONS.map((q, i) => (
+                              <motion.button key={i} onClick={() => setQuestion(q)}
+                                className="card-editorial-hover"
+                                style={{
+                                  padding: '12px 14px', textAlign: 'left',
+                                  display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8,
+                                  cursor: 'pointer', width: '100%',
+                                }}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.32 + i * 0.07 }}
+                                whileHover={{ y: -2 }}>
+                                <span style={{ fontFamily: 'Inter', fontSize: 12, color: '#374151', lineHeight: 1.5 }}>{q}</span>
+                                <ChevronRight size={13} style={{ color: T.borderMid, flexShrink: 0, marginTop: 2 }} />
+                              </motion.button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* ── COMPARE RESULTS ── */}
+                <AnimatePresence>
+                  {compareStatus && (
+                    <motion.div {...fadeUp} key="compare-results">
+
+                      {/* Header */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, gap: 12 }}>
+                        <div>
+                          <p className="section-label" style={{ marginBottom: 4 }}>Evidence Comparison</p>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                            <span style={{
+                              display: 'flex', alignItems: 'center', gap: 6,
+                              fontFamily: 'Inter', fontSize: 14, fontWeight: 600, color: '#1D4ED8',
+                            }}>
+                              <span style={{
+                                width: 20, height: 20, borderRadius: '50%', background: '#2563EB', color: '#fff',
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: 11, fontWeight: 700, fontFamily: 'Inter',
+                              }}>A</span>
+                              {compareStatus.question_a}
+                            </span>
+                            <span style={{ fontFamily: 'Inter', fontSize: 12, color: T.muted }}>vs</span>
+                            <span style={{
+                              display: 'flex', alignItems: 'center', gap: 6,
+                              fontFamily: 'Inter', fontSize: 14, fontWeight: 600, color: '#7C3AED',
+                            }}>
+                              <span style={{
+                                width: 20, height: 20, borderRadius: '50%', background: '#7C3AED', color: '#fff',
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: 11, fontWeight: 700, fontFamily: 'Inter',
+                              }}>B</span>
+                              {compareStatus.question_b}
+                            </span>
+                          </div>
+                        </div>
+                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                          onClick={handleReset} className="btn-ghost"
+                          style={{ fontSize: 12, padding: '6px 12px', flexShrink: 0 }}>
+                          <X size={13} /> New Search
+                        </motion.button>
+                      </div>
+
+                      {(compareStatus.status === 'running' || compareStatus.status === 'pending') ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                          {[
+                            { label: 'A', q: compareStatus.question_a, status: compareStatus.agent_status_a, accentColor: '#2563EB', bg: '#EFF6FF' },
+                            { label: 'B', q: compareStatus.question_b, status: compareStatus.agent_status_b, accentColor: '#7C3AED', bg: '#FDF4FF' },
+                          ].map(({ label, q, status, accentColor, bg }) => (
+                            <div key={label} className="card-editorial"
+                                 style={{ padding: '14px', borderTop: `3px solid ${accentColor}` }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                                <span style={{
+                                  width: 20, height: 20, borderRadius: '50%', background: accentColor, color: '#fff',
+                                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                  fontSize: 11, fontWeight: 700, fontFamily: 'Inter',
+                                }}>{label}</span>
+                                <p style={{ fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: accentColor, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{q}</p>
+                              </div>
+                              <AgentPipeline agentStatus={status || {}} compact />
+                            </div>
                           ))}
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                      ) : compareStatus.status === 'complete' ? (
+                        <ComparisonPanel compareResult={compareStatus} />
+                      ) : null}
 
-                  {/* Example questions — shown when no patient selected */}
-                  {smartSuggestions.length === 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4 }}
-                    >
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Try an Example</p>
-                      <div className="grid gap-2">
-                        {EXAMPLE_QUESTIONS.map((q, i) => (
-                          <motion.button
-                            key={i}
-                            onClick={() => setQuestion(q)}
-                            className="group text-left px-4 py-3 bg-white rounded-xl border border-slate-200
-                                       hover:border-blue-300 hover:shadow-md transition-all"
-                            initial={{ opacity: 0, x: -12 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.45 + i * 0.07 }}
-                            whileHover={{ x: 3 }}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-slate-700 group-hover:text-slate-900">{q}</span>
-                              <Search className="w-3 h-3 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-3" />
+                      {error && <ErrorBanner msg={error} />}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* ── RESULTS ── */}
+                <AnimatePresence>
+                  {jobStatus && (
+                    <motion.div {...fadeUp} key="results">
+
+                      {/* Question header */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 12 }}>
+                        <div style={{ flex: 1 }}>
+                          <p className="section-label" style={{ marginBottom: 6 }}>Clinical Question</p>
+                          <h2 className="font-display"
+                              style={{ fontSize: 26, color: T.navy, lineHeight: 1.25, letterSpacing: '-0.01em' }}>
+                            {jobStatus.question}
+                          </h2>
+                        </div>
+                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                          onClick={handleReset} className="btn-ghost"
+                          style={{ fontSize: 12, padding: '6px 12px', flexShrink: 0 }}>
+                          <X size={13} /> New Search
+                        </motion.button>
+                      </div>
+
+                      {error && <ErrorBanner msg={error} />}
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                        {/* Status badge */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <AnimatePresence mode="wait">
+                            {isRunning ? (
+                              <motion.div key="running" {...fadeIn}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 8,
+                                  padding: '6px 14px', borderRadius: 4,
+                                  background: '#EFF6FF', border: '1px solid #BFDBFE',
+                                  fontFamily: 'Inter', fontSize: 12, fontWeight: 500, color: '#1D4ED8',
+                                }}>
+                                <Spinner />
+                                Synthesising evidence…
+                              </motion.div>
+                            ) : isComplete ? (
+                              <motion.div key="complete" {...fadeIn}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 6,
+                                  padding: '6px 14px', borderRadius: 4,
+                                  background: '#F0FDF4', border: '1px solid #BBF7D0',
+                                  fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: '#065F46',
+                                }}>
+                                <CheckCheck size={14} strokeWidth={2.5} />
+                                Complete
+                              </motion.div>
+                            ) : (
+                              <motion.div key="error" {...fadeIn}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 6,
+                                  padding: '6px 14px', borderRadius: 4,
+                                  background: '#FEF2F2', border: '1px solid #FECACA',
+                                  fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: '#991B1B',
+                                }}>
+                                <X size={13} strokeWidth={2.5} />
+                                Stopped
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+
+                          {jobStatus.summaries?.length > 0 && (
+                            <div style={{
+                              display: 'flex', alignItems: 'center', gap: 8,
+                              padding: '5px 12px', borderRadius: 4,
+                              background: T.white, border: `1px solid ${T.border}`,
+                              fontFamily: 'Inter', fontSize: 11, color: T.muted,
+                            }}>
+                              <FileText size={12} strokeWidth={2} />
+                              <span>{jobStatus.summaries.filter(s => !s.is_trial).length} PubMed</span>
+                              <span style={{ color: T.border }}>·</span>
+                              <span>{jobStatus.summaries.filter(s => s.is_trial).length} Trials</span>
                             </div>
-                          </motion.button>
-                        ))}
+                          )}
+                        </div>
+
+                        {/* Agent pipeline card */}
+                        <motion.div className="card-editorial"
+                          style={{ padding: '16px 18px' }}
+                          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.05, duration: 0.35 }}>
+                          <AgentPipeline agentStatus={jobStatus.agent_status} />
+                        </motion.div>
+
+                        {/* PICO */}
+                        <PICOBadge pico={jobStatus.pico} />
+
+                        {/* Alerts */}
+                        <ContradictionAlert contradictions={jobStatus.contradictions} />
+                        <DrugInteractionAlert interactions={jobStatus.report?.drug_interactions} />
+
+                        {/* Evidence cards */}
+                        {jobStatus.summaries?.length > 0 && (
+                          <motion.div
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                            transition={{ delay: 0.1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                              <p className="section-label">Evidence Sources</p>
+                              <span style={{ fontFamily: 'Inter', fontSize: 11, color: T.muted }}>
+                                {jobStatus.summaries.length} sources
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                              {jobStatus.summaries.map((s, i) => (
+                                <motion.div key={s.pmid || i} id={`source-${i}`}
+                                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: i * 0.04 }}>
+                                  <EvidenceCard summary={s} index={i} highlighted={highlightedSource === i} />
+                                </motion.div>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+
+                        {/* Skeleton loaders */}
+                        {isRunning && !jobStatus.summaries?.length && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {[1,2,3].map(i => (
+                              <div key={i} className="skeleton" style={{ height: 88, opacity: 0.6 }} />
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Report */}
+                        {jobStatus.report && Object.keys(jobStatus.report).length > 0 && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.4 }}>
+                            <ReportPanel
+                              report={jobStatus.report}
+                              question={jobStatus.question}
+                              onCiteClick={handleCiteClick}
+                              onFollowupClick={handleFollowupClick}
+                            />
+                          </motion.div>
+                        )}
+
+                        {isRunning && jobStatus.summaries?.length > 0 && !jobStatus.report && (
+                          <div className="skeleton" style={{ height: 160, opacity: 0.5 }} />
+                        )}
                       </div>
                     </motion.div>
                   )}
-                </motion.div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                </AnimatePresence>
 
-        {/* ── COMPARE RESULTS ─────────────────────────────────── */}
-        <AnimatePresence>
-          {compareStatus && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-            >
-              <div className="flex items-start justify-between mb-8 gap-4">
-                <div>
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Evidence Comparison</p>
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className="flex items-center gap-1.5 text-sm font-bold text-blue-700">
-                      <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">A</span>
-                      {compareStatus.question_a}
-                    </span>
-                    <span className="text-slate-300 font-bold">vs</span>
-                    <span className="flex items-center gap-1.5 text-sm font-bold text-purple-700">
-                      <span className="w-4 h-4 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center font-bold">B</span>
-                      {compareStatus.question_b}
-                    </span>
-                  </div>
-                </div>
-                <motion.button
-                  onClick={handleReset}
-                  className="shrink-0 flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200
-                             rounded-lg text-slate-600 hover:text-slate-900 hover:border-blue-300 text-sm transition-all"
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                >
-                  <X className="w-4 h-4" /> New Search
-                </motion.button>
-              </div>
-
-              {compareStatus.status === 'running' || compareStatus.status === 'pending' ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white rounded-2xl border border-blue-100 shadow-sm p-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold shrink-0">A</span>
-                      <p className="text-xs font-semibold text-blue-700 truncate">{compareStatus.question_a}</p>
-                    </div>
-                    <AgentPipeline agentStatus={compareStatus.agent_status_a || {}} compact />
-                  </div>
-                  <div className="bg-white rounded-2xl border border-purple-100 shadow-sm p-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="w-5 h-5 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center font-bold shrink-0">B</span>
-                      <p className="text-xs font-semibold text-purple-700 truncate">{compareStatus.question_b}</p>
-                    </div>
-                    <AgentPipeline agentStatus={compareStatus.agent_status_b || {}} compact />
-                  </div>
-                </div>
-              ) : compareStatus.status === 'complete' ? (
-                <ComparisonPanel compareResult={compareStatus} />
-              ) : null}
-
-              {error && (
-                <motion.div
-                  className="mt-4 p-4 bg-red-50 rounded-2xl border border-red-200 flex items-start gap-3"
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                >
-                  <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-700">{error}</p>
-                </motion.div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* ── RESULTS ─────────────────────────────────────────── */}
-        <AnimatePresence>
-          {jobStatus && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-            >
-              {/* Question header */}
-              <div className="flex items-start justify-between mb-8 gap-4">
-                <div>
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Clinical Question</p>
-                  <h2 className="text-xl font-bold text-slate-900 max-w-3xl">{jobStatus.question}</h2>
-                </div>
-                <motion.button
-                  onClick={handleReset}
-                  className="shrink-0 flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200
-                             rounded-lg text-slate-600 hover:text-slate-900 hover:border-blue-300 text-sm transition-all"
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                >
-                  <X className="w-4 h-4" /> New Search
-                </motion.button>
-              </div>
-
-              {/* Error banner */}
-              {error && (
-                <motion.div
-                  className="mb-6 p-4 bg-red-50 rounded-2xl border border-red-200 flex items-start gap-3"
-                  initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-                >
-                  <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-red-700">Error</p>
-                    <p className="text-xs text-red-600 mt-0.5">{error}</p>
-                  </div>
-                </motion.div>
-              )}
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Pipeline sidebar */}
-                <div className="lg:col-span-1">
-                  <div className="sticky top-6">
-                    {/* Status pill */}
-                    <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium mb-4 ${
-                      isRunning  ? 'bg-blue-50 border border-blue-200 text-blue-700'
-                      : isComplete ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
-                      : 'bg-red-50 border border-red-200 text-red-700'
-                    }`}>
-                      {isRunning
-                        ? <><Spinner />Running pipeline…</>
-                        : isComplete
-                        ? <><CheckCircle className="w-4 h-4" />Complete</>
-                        : <><AlertTriangle className="w-4 h-4" />Stopped</>
-                      }
-                    </div>
-
-                    {/* Agent pipeline */}
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-                      <AgentPipeline agentStatus={jobStatus.agent_status} />
-                    </div>
-
-                    {/* Source breakdown */}
-                    {jobStatus.summaries?.length > 0 && (
-                      <motion.div
-                        className="mt-4 bg-white rounded-xl border border-slate-200 p-4"
-                        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                      >
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Sources</p>
-                        <div className="flex gap-4 text-sm">
-                          <div className="flex items-center gap-1.5 text-slate-700">
-                            <FileText className="w-4 h-4 text-blue-500" />
-                            <span>{jobStatus.summaries.filter(s => !s.is_trial).length} PubMed</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-slate-700">
-                            <Activity className="w-4 h-4 text-purple-500" />
-                            <span>{jobStatus.summaries.filter(s => s.is_trial).length} Trials</span>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
+                {/* CDS Hooks */}
+                <div style={{ marginTop: 32, marginBottom: 16 }}>
+                  <CDSHooksDemo />
                 </div>
 
-                {/* Main content */}
-                <div className="lg:col-span-2 space-y-6">
-                  <PICOBadge pico={jobStatus.pico} />
-                  <ContradictionAlert contradictions={jobStatus.contradictions} />
-                  <DrugInteractionAlert interactions={jobStatus.report?.drug_interactions} />
-
-                  {/* Evidence cards */}
-                  {jobStatus.summaries?.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">
-                        Evidence — {jobStatus.summaries.length} Sources
-                      </p>
-                      <div className="space-y-4">
-                        {jobStatus.summaries.map((s, i) => (
-                          <motion.div
-                            key={s.pmid || i}
-                            id={`source-${i}`}
-                            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.06 }}
-                          >
-                            <EvidenceCard summary={s} index={i} highlighted={highlightedSource === i} />
-                          </motion.div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Skeleton loaders */}
-                  {isRunning && !jobStatus.summaries?.length && (
-                    <div className="space-y-4">
-                      {[1,2,3].map(i => (
-                        <div key={i} className="h-36 rounded-2xl bg-white border border-slate-200 animate-pulse" />
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Report */}
-                  {jobStatus.report && Object.keys(jobStatus.report).length > 0 && (
-                    <ReportPanel
-                      report={jobStatus.report}
-                      question={jobStatus.question}
-                      onCiteClick={handleCiteClick}
-                      onFollowupClick={handleFollowupClick}
-                    />
-                  )}
-
-                  {isRunning && jobStatus.summaries?.length > 0 && !jobStatus.report && (
-                    <div className="h-56 rounded-2xl bg-white border border-slate-200 animate-pulse" />
-                  )}
+                {/* Footer */}
+                <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${T.border}` }}>
+                  <p style={{ fontFamily: 'Inter', fontSize: 11, color: T.muted }}>
+                    ClinicalMed · FastAPI · LangGraph · FHIR R4 · Claude
+                  </p>
+                  <p style={{ fontFamily: 'Inter', fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
+                    For research use only · Not a substitute for clinical judgment
+                  </p>
                 </div>
               </div>
             </motion.div>
@@ -833,57 +934,17 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      {/* CDS Hooks demo strip */}
-      <CDSHooksDemo />
-
-      {/* Footer */}
-      <footer className="relative z-10 mt-8 border-t border-slate-200/60 bg-white/40 backdrop-blur py-6">
-        <div className="max-w-7xl mx-auto px-6 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs text-slate-500">ClinicalMind v3 · FastAPI · LangGraph · FHIR R4 · Anthropic Claude</p>
-          <p className="text-xs text-slate-500">For research only · Not a substitute for clinical judgment</p>
-        </div>
-      </footer>
-
-      {/* Patient detail drawer */}
+      {/* ── PATIENT DETAIL DRAWER ── */}
       <AnimatePresence>
         {detailPatientId && (
-          <PatientDetailPanel
-            fhirId={detailPatientId}
-            onClose={() => setDetailPatientId(null)}
-          />
+          <PatientDetailPanel fhirId={detailPatientId} onClose={() => setDetailPatientId(null)} />
         )}
       </AnimatePresence>
 
-      {/* Auth modal */}
+      {/* ── HISTORY DRAWER ── */}
       <AnimatePresence>
-        {showAuth && (
-          <AuthModal onAuth={u => { setUser(u); setShowAuth(false) }} onClose={() => setShowAuth(false)} />
-        )}
-      </AnimatePresence>
-
-      {/* History drawer */}
-      <AnimatePresence>
-        {showHistory && user && (
-          <motion.div
-            className="fixed inset-0 z-50 flex"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setShowHistory(false)}
-          >
-            <motion.div
-              className="ml-auto w-full max-w-sm h-full bg-white border-l border-slate-200 shadow-2xl overflow-y-auto p-6"
-              initial={{ x: 80, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 80, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-base font-bold text-slate-900">Search History</h2>
-                <button onClick={() => setShowHistory(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <SearchHistory onSelect={loadHistory} />
-            </motion.div>
-          </motion.div>
+        {showHistory && (
+          <SearchHistory onClose={() => setShowHistory(false)} onLoad={loadHistory} />
         )}
       </AnimatePresence>
     </div>

@@ -39,7 +39,7 @@ export default function AuthModal({ onAuth, onClose }) {
         <div className="px-6 pt-6 pb-4 border-b border-clinical-border flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-white">
-              {mode === 'login' ? 'Sign in to ClinicalMind' : 'Create your account'}
+              {mode === 'login' ? 'Sign in to ClinicalMed' : 'Create your account'}
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
               {mode === 'login' ? 'Access your search history and saved reports' : 'Free account — no credit card required'}
