@@ -5,6 +5,26 @@ import HeroMockup from './HeroMockup'
 export default function HeroSection() {
   return (
     <section className="relative min-h-screen bg-hero-aether flex flex-col pt-[68px] overflow-hidden">
+
+      {/* Ambient background drift */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <motion.div
+          className="absolute -top-32 -left-40 w-[700px] h-[700px] rounded-full bg-sky/25 blur-[140px]"
+          animate={{ x: [0, 60, 0], y: [0, -50, 0], scale: [1, 1.08, 1] }}
+          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div
+          className="absolute top-1/2 -right-32 w-[500px] h-[500px] rounded-full bg-accent-warm/35 blur-[120px]"
+          animate={{ x: [0, -45, 0], y: [0, 35, 0], scale: [1, 1.1, 1] }}
+          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 4 }}
+        />
+        <motion.div
+          className="absolute bottom-0 left-1/3 w-[400px] h-[400px] rounded-full bg-teal/15 blur-[100px]"
+          animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
+          transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut', delay: 8 }}
+        />
+      </div>
+
       <div className="relative flex-1 flex flex-col items-center justify-center text-center px-6 md:px-12 pt-16 md:pt-20 pb-10">
         <motion.h1
           initial={{ opacity: 0, y: 20 }}

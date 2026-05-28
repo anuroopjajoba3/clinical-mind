@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Database, Brain, Search, AlertTriangle, FileText, Upload } from 'lucide-react'
 import Reveal from '../ui/Reveal'
 import SectionHeader from '../ui/SectionHeader'
-import { BtnPrimary } from '../ui/Button'
+
 
 const STEPS = [
   {
@@ -117,8 +117,22 @@ export default function WorkflowSection() {
   const step = STEPS[active]
 
   return (
-    <section id="workflow" className="py-28 md:py-32 px-6 md:px-12 bg-white">
-      <div className="max-w-6xl mx-auto">
+    <section id="workflow" className="relative py-28 md:py-32 px-6 md:px-12 bg-white overflow-hidden">
+
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <motion.div
+          className="absolute -top-20 right-[10%] w-[550px] h-[550px] rounded-full bg-teal/6 blur-[150px]"
+          animate={{ scale: [1, 1.1, 1], x: [0, -35, 0], y: [0, 20, 0] }}
+          transition={{ duration: 21, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div
+          className="absolute bottom-[10%] left-[-5%] w-[400px] h-[400px] rounded-full bg-sky-light/30 blur-[120px]"
+          animate={{ scale: [1, 1.08, 1], y: [0, -25, 0] }}
+          transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut', delay: 7 }}
+        />
+      </div>
+
+      <div className="relative max-w-6xl mx-auto">
         <Reveal>
           <SectionHeader
             eyebrow="Clinical workflow"
@@ -174,11 +188,6 @@ export default function WorkflowSection() {
                 </Reveal>
               )
             })}
-            <Reveal delay={0.2}>
-              <div className="pt-8">
-                <BtnPrimary href="/app">Launch platform</BtnPrimary>
-              </div>
-            </Reveal>
           </div>
         </div>
       </div>

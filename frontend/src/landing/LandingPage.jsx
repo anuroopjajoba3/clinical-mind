@@ -2,6 +2,8 @@ import LandingNav from './sections/LandingNav'
 import HeroSection from './sections/HeroSection'
 import PipelineStrip from './sections/PipelineStrip'
 import FeatureSection from './sections/FeatureSection'
+import EvidenceSection from './sections/EvidenceSection'
+import WorkflowSection from './sections/WorkflowSection'
 import ValuesSection from './sections/ValuesSection'
 import CaseStudySection from './sections/CaseStudySection'
 import PlatformSection from './sections/PlatformSection'
@@ -16,6 +18,8 @@ export default function LandingPage() {
         <HeroSection />
         <PipelineStrip />
         <FeatureSection />
+        <EvidenceSection />
+        <WorkflowSection />
         <ValuesSection />
         <CaseStudySection />
         <PlatformSection />
