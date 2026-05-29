@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import AsyncGenerator
 
 from sqlalchemy import (
-    Column, String, Boolean, DateTime, Text, JSON, ForeignKey
+    Column, String, Boolean, DateTime, Float, Text, JSON, ForeignKey
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
@@ -150,6 +150,121 @@ class PatientInsight(Base):
     created_at           = Column(DateTime, default=datetime.utcnow, index=True)
 
     patient = relationship("Patient", back_populates="insights")
+
+
+# ─── Discharge Monitoring ─────────────────────────────────────────────────────
+
+class CareCoordinator(Base):
+    """
+    Licensed care coordinators assigned to post-discharge patients.
+    Coordinators are human — this table tracks their profile and caseload.
+    """
+    __tablename__ = "care_coordinators"
+
+    id           = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    full_name    = Column(String(255), nullable=False)
+    email        = Column(String(255), unique=True, nullable=False)
+    license_type = Column(String(100), nullable=True)   # RN, NP, PA, CHW, etc.
+    license_id   = Column(String(100), nullable=True)
+    phone        = Column(String(30), nullable=True)
+    active       = Column(Boolean, default=True, nullable=False)
+    created_at   = Column(DateTime, default=datetime.utcnow)
+
+    enrollments = relationship(
+        "DischargeEnrollment", back_populates="coordinator",
+        foreign_keys="DischargeEnrollment.coordinator_id",
+    )
+
+
+class DischargeEnrollment(Base):
+    """
+    One row per patient discharge episode.
+    Created when a patient is discharged and enrolled in the 30-day monitoring program.
+    status: active | completed | readmitted | withdrawn
+    risk_tier: high | medium | low  (updated daily by the risk agent)
+    """
+    __tablename__ = "discharge_enrollments"
+
+    id                  = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id          = Column(UUID(as_uuid=True), ForeignKey("patients.id"), nullable=False, index=True)
+    coordinator_id      = Column(UUID(as_uuid=True), ForeignKey("care_coordinators.id"), nullable=True)
+
+    discharge_date      = Column(DateTime, nullable=False)
+    primary_diagnosis   = Column(String(512), nullable=True)
+    discharge_summary   = Column(Text, nullable=True)
+
+    # Risk tier refreshed each time the risk agent runs
+    risk_tier           = Column(String(10), default="medium", nullable=False)  # high|medium|low
+    risk_score          = Column(Float, nullable=True)                          # 0.0–1.0
+
+    # Key follow-up instructions extracted from discharge notes
+    follow_up_actions   = Column(JSON, nullable=True)  # [{action, due_date, completed}]
+
+    # Medications at discharge — checked against subsequent labs/conditions
+    discharge_meds      = Column(JSON, nullable=True)  # [{name, dose, frequency}]
+
+    status              = Column(String(20), default="active", nullable=False, index=True)
+    readmission_date    = Column(DateTime, nullable=True)
+
+    enrolled_at         = Column(DateTime, default=datetime.utcnow)
+    updated_at          = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    patient     = relationship("Patient", backref="discharge_enrollments")
+    coordinator = relationship("CareCoordinator", back_populates="enrollments",
+                               foreign_keys=[coordinator_id])
+    risk_scores = relationship("DailyRiskScore", back_populates="enrollment",
+                               cascade="all, delete-orphan",
+                               order_by="DailyRiskScore.scored_at.desc()")
+    checkins    = relationship("CoordinatorCheckin", back_populates="enrollment",
+                               cascade="all, delete-orphan",
+                               order_by="CoordinatorCheckin.checked_in_at.desc()")
+
+
+class DailyRiskScore(Base):
+    """
+    Daily risk assessment produced by the discharge_risk_agent for each active enrollment.
+    Keeps a time-series so the hospital dashboard can show trend sparklines.
+    """
+    __tablename__ = "daily_risk_scores"
+
+    id            = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    enrollment_id = Column(UUID(as_uuid=True), ForeignKey("discharge_enrollments.id"),
+                           nullable=False, index=True)
+
+    risk_score    = Column(Float, nullable=False)          # 0.0–1.0
+    risk_tier     = Column(String(10), nullable=False)     # high|medium|low
+    risk_flags    = Column(JSON, nullable=True)            # [{flag, severity, detail}]
+    recommended_actions = Column(JSON, nullable=True)      # [{action, urgency}]
+    agent_reasoning     = Column(Text, nullable=True)      # LLM rationale (for audit)
+
+    scored_at     = Column(DateTime, default=datetime.utcnow, index=True)
+
+    enrollment = relationship("DischargeEnrollment", back_populates="risk_scores")
+
+
+class CoordinatorCheckin(Base):
+    """
+    Logged check-in event when a coordinator contacts a discharged patient.
+    method: phone | in_person | video | message
+    outcome: well | concerning | urgent | no_answer
+    """
+    __tablename__ = "coordinator_checkins"
+
+    id            = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    enrollment_id = Column(UUID(as_uuid=True), ForeignKey("discharge_enrollments.id"),
+                           nullable=False, index=True)
+    coordinator_id = Column(UUID(as_uuid=True), ForeignKey("care_coordinators.id"), nullable=True)
+
+    method        = Column(String(20), nullable=False, default="phone")  # phone|in_person|video|message
+    outcome       = Column(String(20), nullable=False, default="well")   # well|concerning|urgent|no_answer
+    notes         = Column(Text, nullable=True)
+    vitals_reported = Column(JSON, nullable=True)   # {bp, hr, weight, temp, o2sat} — patient self-report
+    escalated     = Column(Boolean, default=False)  # True if coordinator flagged for clinical review
+
+    checked_in_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    enrollment  = relationship("DischargeEnrollment", back_populates="checkins")
+    coordinator = relationship("CareCoordinator", foreign_keys=[coordinator_id])
 
 
 # ─── Engine + Session ─────────────────────────────────────────────────────────

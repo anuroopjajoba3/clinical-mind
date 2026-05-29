@@ -25,7 +25,10 @@ from slowapi.errors import RateLimitExceeded
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Counter, Histogram
 
-from database import get_db, create_tables, Job, User
+from database import (
+    get_db, create_tables, Job, User,
+    Patient, DischargeEnrollment, DailyRiskScore, CareCoordinator, CoordinatorCheckin,
+)
 import fhir_client as fhir
 import patient_memory as memory
 import workspace as ws
@@ -1006,6 +1009,283 @@ async def get_insight_detail(
     if not insight:
         raise HTTPException(status_code=404, detail="Insight not found.")
     return insight
+
+
+# ─── Discharge Monitoring Endpoints ──────────────────────────────────────────
+
+class EnrollDischargeRequest(BaseModel):
+    fhir_patient_id: str
+    discharge_date: str                     # ISO date e.g. "2026-05-29"
+    primary_diagnosis: str
+    discharge_summary: Optional[str] = None
+    discharge_meds: Optional[list[dict]] = []
+    coordinator_id: Optional[str] = None
+
+
+class CheckinRequest(BaseModel):
+    method: str = "phone"                   # phone|in_person|video|message
+    outcome: str = "well"                   # well|concerning|urgent|no_answer
+    notes: Optional[str] = None
+    vitals_reported: Optional[dict] = None  # {bp, hr, weight, temp, o2sat}
+    escalated: bool = False
+
+
+@app.post("/discharge/enroll", status_code=201)
+async def enroll_discharge(
+    body: EnrollDischargeRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Enroll a patient in the 30-day post-discharge monitoring program.
+    Immediately runs the discharge_risk_agent for the first risk score.
+    """
+    from datetime import datetime as dt
+    from agents import discharge_risk_agent
+
+    # Resolve local Patient row from fhir_id
+    result = await db.execute(select(Patient).where(Patient.fhir_id == body.fhir_patient_id))
+    patient = result.scalar_one_or_none()
+    if not patient:
+        raise HTTPException(status_code=404, detail=f"Patient {body.fhir_patient_id} not found — sync first.")
+
+    # Parse discharge_date
+    try:
+        discharge_dt = dt.fromisoformat(body.discharge_date)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="discharge_date must be ISO format e.g. 2026-05-29")
+
+    # Create enrollment row
+    enrollment = DischargeEnrollment(
+        patient_id        = patient.id,
+        coordinator_id    = uuid.UUID(body.coordinator_id) if body.coordinator_id else None,
+        discharge_date    = discharge_dt,
+        primary_diagnosis = body.primary_diagnosis,
+        discharge_summary = body.discharge_summary,
+        discharge_meds    = body.discharge_meds,
+        status            = "active",
+    )
+    db.add(enrollment)
+    await db.flush()  # get enrollment.id before risk agent
+
+    # Run first risk assessment
+    fhir_ctx = await memory.get_patient_context(db, body.fhir_patient_id)
+    risk = await discharge_risk_agent(
+        enrollment_id    = str(enrollment.id),
+        fhir_patient_id  = body.fhir_patient_id,
+        discharge_date   = body.discharge_date,
+        primary_diagnosis= body.primary_diagnosis,
+        discharge_meds   = body.discharge_meds or [],
+        fhir_context     = fhir_ctx,
+    )
+
+    # Persist first DailyRiskScore
+    score_row = DailyRiskScore(
+        enrollment_id       = enrollment.id,
+        risk_score          = risk["risk_score"],
+        risk_tier           = risk["risk_tier"],
+        risk_flags          = risk["risk_flags"],
+        recommended_actions = risk["recommended_actions"],
+        agent_reasoning     = risk["agent_reasoning"],
+    )
+    db.add(score_row)
+
+    # Stamp risk tier on enrollment
+    enrollment.risk_score = risk["risk_score"]
+    enrollment.risk_tier  = risk["risk_tier"]
+    enrollment.follow_up_actions = [
+        {"action": a["action"], "urgency": a["urgency"], "completed": False}
+        for a in risk["recommended_actions"]
+    ]
+
+    await db.commit()
+
+    return {
+        "enrollment_id":   str(enrollment.id),
+        "patient_id":      str(patient.id),
+        "fhir_patient_id": body.fhir_patient_id,
+        "risk_tier":       risk["risk_tier"],
+        "risk_score":      risk["risk_score"],
+        "risk_flags":      risk["risk_flags"],
+        "recommended_actions": risk["recommended_actions"],
+        "message":         "Patient enrolled in 30-day discharge monitoring.",
+    }
+
+
+@app.get("/discharge/dashboard")
+async def discharge_dashboard(
+    status: Optional[str] = "active",
+    risk_tier: Optional[str] = None,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Hospital dashboard — all enrolled patients with risk tiers and last check-in.
+    Used by the DischargeDashboard React page.
+    """
+    from sqlalchemy.orm import selectinload
+
+    q = select(DischargeEnrollment).options(
+        selectinload(DischargeEnrollment.patient),
+        selectinload(DischargeEnrollment.coordinator),
+        selectinload(DischargeEnrollment.checkins),
+    )
+    if status:
+        q = q.where(DischargeEnrollment.status == status)
+    if risk_tier:
+        q = q.where(DischargeEnrollment.risk_tier == risk_tier)
+    q = q.order_by(DischargeEnrollment.enrolled_at.desc()).limit(limit)
+
+    result = await db.execute(q)
+    enrollments = result.scalars().all()
+
+    rows = []
+    for e in enrollments:
+        last_checkin = e.checkins[0] if e.checkins else None
+        rows.append({
+            "enrollment_id":    str(e.id),
+            "patient_name":     e.patient.full_name if e.patient else "Unknown",
+            "fhir_patient_id":  e.patient.fhir_id if e.patient else None,
+            "mrn":              e.patient.mrn if e.patient else None,
+            "primary_diagnosis": e.primary_diagnosis,
+            "discharge_date":   e.discharge_date.isoformat() if e.discharge_date else None,
+            "risk_tier":        e.risk_tier,
+            "risk_score":       e.risk_score,
+            "status":           e.status,
+            "coordinator":      e.coordinator.full_name if e.coordinator else None,
+            "last_checkin":     last_checkin.checked_in_at.isoformat() if last_checkin else None,
+            "last_outcome":     last_checkin.outcome if last_checkin else None,
+            "enrolled_at":      e.enrolled_at.isoformat(),
+        })
+
+    return {
+        "total": len(rows),
+        "enrollments": rows,
+    }
+
+
+@app.get("/discharge/{enrollment_id}/risk")
+async def get_discharge_risk(
+    enrollment_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Latest risk score + 7-day history for sparkline."""
+    from sqlalchemy.orm import selectinload
+
+    result = await db.execute(
+        select(DischargeEnrollment)
+        .options(selectinload(DischargeEnrollment.risk_scores))
+        .where(DischargeEnrollment.id == uuid.UUID(enrollment_id))
+    )
+    enrollment = result.scalar_one_or_none()
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="Enrollment not found.")
+
+    history = sorted(enrollment.risk_scores, key=lambda r: r.scored_at, reverse=True)[:7]
+
+    return {
+        "enrollment_id": enrollment_id,
+        "current_risk_tier":  enrollment.risk_tier,
+        "current_risk_score": enrollment.risk_score,
+        "latest": {
+            "risk_flags":          history[0].risk_flags if history else [],
+            "recommended_actions": history[0].recommended_actions if history else [],
+            "reasoning":           history[0].agent_reasoning if history else "",
+            "scored_at":           history[0].scored_at.isoformat() if history else None,
+        } if history else None,
+        "history": [
+            {
+                "risk_score": r.risk_score,
+                "risk_tier":  r.risk_tier,
+                "scored_at":  r.scored_at.isoformat(),
+            }
+            for r in history
+        ],
+    }
+
+
+@app.post("/discharge/{enrollment_id}/checkin", status_code=201)
+async def log_checkin(
+    enrollment_id: str,
+    body: CheckinRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Coordinator logs a check-in event for a discharge enrollment."""
+    result = await db.execute(
+        select(DischargeEnrollment).where(DischargeEnrollment.id == uuid.UUID(enrollment_id))
+    )
+    enrollment = result.scalar_one_or_none()
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="Enrollment not found.")
+
+    checkin = CoordinatorCheckin(
+        enrollment_id   = enrollment.id,
+        method          = body.method,
+        outcome         = body.outcome,
+        notes           = body.notes,
+        vitals_reported = body.vitals_reported,
+        escalated       = body.escalated,
+    )
+    db.add(checkin)
+
+    # Auto-escalate status if outcome is urgent
+    if body.outcome == "urgent":
+        enrollment.risk_tier = "high"
+
+    await db.commit()
+    return {"checkin_id": str(checkin.id), "outcome": body.outcome, "escalated": body.escalated}
+
+
+@app.post("/discharge/{enrollment_id}/refresh-risk", status_code=200)
+async def refresh_discharge_risk(
+    enrollment_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Manually trigger a new risk assessment for an active enrollment."""
+    from agents import discharge_risk_agent
+
+    result = await db.execute(
+        select(DischargeEnrollment).options(
+            __import__("sqlalchemy.orm", fromlist=["selectinload"]).selectinload(DischargeEnrollment.patient)
+        ).where(DischargeEnrollment.id == uuid.UUID(enrollment_id))
+    )
+    enrollment = result.scalar_one_or_none()
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="Enrollment not found.")
+
+    fhir_ctx = await memory.get_patient_context(db, enrollment.patient.fhir_id)
+    risk = await discharge_risk_agent(
+        enrollment_id     = enrollment_id,
+        fhir_patient_id   = enrollment.patient.fhir_id,
+        discharge_date    = enrollment.discharge_date.isoformat(),
+        primary_diagnosis = enrollment.primary_diagnosis or "",
+        discharge_meds    = enrollment.discharge_meds or [],
+        fhir_context      = fhir_ctx,
+    )
+
+    score_row = DailyRiskScore(
+        enrollment_id       = enrollment.id,
+        risk_score          = risk["risk_score"],
+        risk_tier           = risk["risk_tier"],
+        risk_flags          = risk["risk_flags"],
+        recommended_actions = risk["recommended_actions"],
+        agent_reasoning     = risk["agent_reasoning"],
+    )
+    db.add(score_row)
+    enrollment.risk_score = risk["risk_score"]
+    enrollment.risk_tier  = risk["risk_tier"]
+    await db.commit()
+
+    return {
+        "risk_tier":  risk["risk_tier"],
+        "risk_score": risk["risk_score"],
+        "risk_flags": risk["risk_flags"],
+        "recommended_actions": risk["recommended_actions"],
+    }
 
 
 if __name__ == "__main__":

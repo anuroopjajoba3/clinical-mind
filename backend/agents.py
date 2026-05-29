@@ -1049,3 +1049,114 @@ def build_graph():
 
 
 clinical_graph = build_graph()
+
+
+# ─── Discharge Risk Agent ─────────────────────────────────────────────────────
+# Standalone — NOT part of the evidence synthesis graph.
+# Called directly by the discharge API endpoints / Celery beat task.
+
+class DischargeRiskState(TypedDict):
+    enrollment_id: str
+    fhir_patient_id: str
+    discharge_date: str          # ISO date string
+    primary_diagnosis: str
+    discharge_meds: list[dict]   # [{name, dose, frequency}]
+    fhir_context: Optional[dict] # populated by fhir_context_agent logic
+    risk_score: Optional[float]
+    risk_tier: Optional[str]
+    risk_flags: Optional[list]
+    recommended_actions: Optional[list]
+    agent_reasoning: Optional[str]
+    error: Optional[str]
+
+
+async def discharge_risk_agent(
+    enrollment_id: str,
+    fhir_patient_id: str,
+    discharge_date: str,
+    primary_diagnosis: str,
+    discharge_meds: list[dict],
+    fhir_context: Optional[dict] = None,
+) -> dict:
+    """
+    Runs a 30-day readmission risk assessment for a discharged patient.
+    Returns a dict matching DailyRiskScore fields.
+
+    Designed to be called from:
+      - POST /discharge/enroll (immediate first assessment)
+      - A Celery beat task running nightly for all active enrollments
+    """
+    llm = get_llm(max_tokens=2048)
+
+    fhir_summary = ""
+    if fhir_context:
+        conditions = [e.get("display", "") for e in fhir_context.get("entities", []) if e.get("entity_type") == "condition"]
+        labs       = [f"{e.get('display','')} {e.get('value','')}" for e in fhir_context.get("entities", []) if e.get("entity_type") == "lab"]
+        meds       = [e.get("display", "") for e in fhir_context.get("entities", []) if e.get("entity_type") == "medication"]
+        fhir_summary = f"""
+Active conditions: {', '.join(conditions[:8]) or 'none recorded'}
+Current medications: {', '.join(meds[:10]) or 'none recorded'}
+Recent labs: {', '.join(labs[:8]) or 'none recorded'}
+""".strip()
+
+    med_list = ", ".join(m.get("name", "") for m in discharge_meds) if discharge_meds else "not recorded"
+
+    prompt = f"""You are a clinical risk stratification AI. Assess 30-day hospital readmission risk for this patient.
+
+DISCHARGE INFORMATION
+Primary diagnosis: {primary_diagnosis}
+Discharge date: {discharge_date}
+Medications at discharge: {med_list}
+
+CURRENT FHIR CONTEXT
+{fhir_summary or 'No FHIR data available'}
+
+OUTPUT — respond with valid JSON only, no prose:
+{{
+  "risk_score": <float 0.0–1.0>,
+  "risk_tier": "<high|medium|low>",
+  "risk_flags": [
+    {{"flag": "<clinical flag>", "severity": "<high|medium|low>", "detail": "<1-sentence explanation>"}}
+  ],
+  "recommended_actions": [
+    {{"action": "<specific action>", "urgency": "<immediate|within_48h|within_week>"}}
+  ],
+  "reasoning": "<2-3 sentence clinical rationale for risk tier>"
+}}
+
+Risk tier thresholds: high = score ≥ 0.65, medium = 0.35–0.64, low < 0.35.
+Focus on: medication adherence risk, follow-up appointment gaps, abnormal labs, social determinants, diagnosis-specific 30-day risk factors (e.g. HF, COPD, sepsis, ACS)."""
+
+    try:
+        response = await llm.ainvoke([
+            SystemMessage(content="You are a clinical AI. Respond with valid JSON only."),
+            HumanMessage(content=prompt),
+        ])
+        raw = _strip_json(response.content)
+        data = json.loads(raw)
+
+        score = float(data.get("risk_score", 0.5))
+        # Enforce tier consistency with score
+        if score >= 0.65:
+            tier = "high"
+        elif score >= 0.35:
+            tier = "medium"
+        else:
+            tier = "low"
+
+        return {
+            "risk_score":          score,
+            "risk_tier":           tier,
+            "risk_flags":          data.get("risk_flags", []),
+            "recommended_actions": data.get("recommended_actions", []),
+            "agent_reasoning":     data.get("reasoning", ""),
+        }
+
+    except Exception as e:
+        return {
+            "risk_score":          0.5,
+            "risk_tier":           "medium",
+            "risk_flags":          [{"flag": "Assessment unavailable", "severity": "low", "detail": str(e)}],
+            "recommended_actions": [{"action": "Manual clinical review required", "urgency": "within_48h"}],
+            "agent_reasoning":     f"Risk agent error: {e}",
+        }

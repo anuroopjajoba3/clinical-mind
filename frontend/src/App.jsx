@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LogOut, X, AlertTriangle, Clock, Search, BarChart3, Brain,
   ChevronRight, FileText, Zap, ArrowRight, RefreshCw, CheckCheck,
+  Activity,
 } from 'lucide-react'
 import { researchAPI, compareAPI, createJobStream, authAPI } from './api'
+import DischargeDashboard from './components/DischargeDashboard'
 import AgentPipeline   from './components/AgentPipeline'
 import EvidenceCard    from './components/EvidenceCard'
 import ReportPanel     from './components/ReportPanel'
@@ -405,6 +407,21 @@ export default function App() {
               type="button"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
+              onClick={() => setMainView(mainView === 'discharge' ? 'search' : 'discharge')}
+              className={`inline-flex items-center gap-2 font-sans text-xs font-semibold px-3 py-2 rounded-lg border transition-colors ${
+                mainView === 'discharge'
+                  ? 'bg-[#0E7490] text-white border-[#0E7490]'
+                  : 'text-[#555] border-[#E8E4DC] bg-[#FAFAF8] hover:border-[#0E7490]/40'
+              }`}
+            >
+              <Activity size={13} strokeWidth={2} />
+              Discharge
+            </motion.button>
+
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => setShowHistory(true)}
               className="inline-flex items-center gap-2 font-sans text-xs font-medium text-[#555] px-3 py-2 rounded-lg border border-[#E8E4DC] bg-[#FAFAF8] hover:border-[#5B8F85]/40 transition-colors"
             >
@@ -433,7 +450,12 @@ export default function App() {
 
         {/* ── CONTENT ── */}
         <AnimatePresence mode="wait" initial={false}>
-          {mainView === 'dashboard' && selectedPatient ? (
+          {mainView === 'discharge' ? (
+            <motion.div key="discharge" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+              {...fadeIn}>
+              <DischargeDashboard />
+            </motion.div>
+          ) : mainView === 'dashboard' && selectedPatient ? (
             <motion.div key="dashboard" style={{ flex: 1, overflow: 'hidden' }}
               {...fadeIn}>
               <PatientDashboard

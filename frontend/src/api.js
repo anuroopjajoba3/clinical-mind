@@ -127,6 +127,14 @@ export const compareAPI = {
   status: (compare_id) => api.get(`/compare/${compare_id}`),
 }
 
+export const dischargeAPI = {
+  enroll:       (body)           => api.post('/discharge/enroll', body),
+  dashboard:    (params = {})    => api.get('/discharge/dashboard', { params }),
+  risk:         (enrollmentId)   => api.get(`/discharge/${enrollmentId}/risk`),
+  checkin:      (enrollmentId, body) => api.post(`/discharge/${enrollmentId}/checkin`, body),
+  refreshRisk:  (enrollmentId)   => api.post(`/discharge/${enrollmentId}/refresh-risk`),
+}
+
 export function createJobStream(job_id, onData, onError) {
   const base  = getCurrentApiBase()
   const token = sessionStorage.getItem('cm_token')
