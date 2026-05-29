@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion'
 import Reveal from '../ui/Reveal'
 
-// Swap with your uploaded clinical team image
-const CASE_IMG = 'https://images.unsplash.com/photo-1551601651-2a8555f1a136?w=1200&q=85&auto=format&fit=crop'
+import caseImg from '../../assets/case-study.jpg'
+const CASE_IMG = caseImg
 
 const STATS = [
   { value: '4 min',  label: 'Avg. synthesis time', sub: 'down from 2+ hours' },
