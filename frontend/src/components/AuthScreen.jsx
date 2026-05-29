@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Shield, Zap, FileCheck, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { authAPI, checkApiHealth, formatApiError } from '../api'
+import CursorFX from './CursorFX'
 
 const FEATURES = [
   { icon: Shield,    text: 'HIPAA-ready infrastructure' },
@@ -60,7 +61,8 @@ export default function AuthScreen({ onAuthenticated }) {
     }`
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', overflow: 'hidden', fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', overflow: 'hidden', fontFamily: 'Inter, system-ui, sans-serif', cursor: 'none' }}>
+      <CursorFX />
 
       {/* ══════════════════════════════════════════
           LEFT PANEL — dark brand

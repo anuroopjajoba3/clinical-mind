@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle, Loader2, Circle } from 'lucide-react'
 import Reveal from '../ui/Reveal'
+import MagneticText from '../../components/MagneticText'
 
 const FEATURES = [
   {
@@ -153,7 +154,7 @@ export default function FeatureSection() {
             LangGraph clinical pipeline
           </p>
           <h2 className="font-sans text-[clamp(2.25rem,4vw,3.25rem)] font-extrabold leading-[1.08] tracking-[-0.025em] text-slate-900 max-w-[600px]">
-            From FHIR context to evidence written back to the EMR.
+            <MagneticText text="From FHIR context to evidence written back to the EMR." radius={75} strength={16} />
           </h2>
         </Reveal>
 
@@ -176,8 +177,12 @@ export default function FeatureSection() {
                 className="flex items-start justify-between gap-5 py-6 border-b border-slate-100 first:pt-0 last:border-0"
               >
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-sans text-[16px] font-bold text-slate-900 mb-1.5">{f.title}</h3>
-                  <p className="font-sans text-[13px] text-slate-500 leading-relaxed">{f.desc}</p>
+                  <h3 className="font-sans text-[16px] font-bold text-slate-900 mb-1.5">
+                    <MagneticText text={f.title} radius={55} strength={10} />
+                  </h3>
+                  <p className="font-sans text-[13px] text-slate-500 leading-relaxed">
+                    <MagneticText split="word" text={f.desc} radius={45} strength={6} />
+                  </p>
                 </div>
                 <motion.span
                   className="font-sans text-xs font-semibold text-slate-300 tracking-wide flex-shrink-0 pt-0.5"

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Database, Brain, Search, AlertTriangle, FileText, Upload } from 'lucide-react'
 import Reveal from '../ui/Reveal'
+import MagneticText from '../../components/MagneticText'
 
 const STEPS = [
   {
@@ -199,10 +200,10 @@ export default function WorkflowSection() {
             Clinical workflow
           </p>
           <h2 className="font-sans text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-[-0.025em] text-slate-900 max-w-[560px] leading-tight">
-            Evidence infrastructure, not a chatbot.
+            <MagneticText text="Evidence infrastructure, not a chatbot." radius={70} strength={14} />
           </h2>
           <p className="font-sans text-[14px] text-slate-500 mt-4 max-w-[480px] leading-relaxed">
-            Six deterministic stages from EMR context to written-back synthesis. Every step auditable. Every output reproducible.
+            <MagneticText split="word" text="Six deterministic stages from EMR context to written-back synthesis. Every step auditable. Every output reproducible." radius={60} strength={8} />
           </p>
         </Reveal>
 
@@ -240,9 +241,13 @@ export default function WorkflowSection() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1.5">
                         <StepIcon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-teal' : 'text-slate-400'}`} strokeWidth={1.75} />
-                        <h3 className="font-sans text-[15px] font-bold text-slate-900">{s.title}</h3>
+                        <h3 className="font-sans text-[15px] font-bold text-slate-900">
+                          <MagneticText text={s.title} radius={55} strength={10} />
+                        </h3>
                       </div>
-                      <p className="font-sans text-[13px] text-slate-500 leading-relaxed">{s.desc}</p>
+                      <p className="font-sans text-[13px] text-slate-500 leading-relaxed">
+                        <MagneticText split="word" text={s.desc} radius={50} strength={6} />
+                      </p>
                     </div>
                     {isActive && (
                       <motion.span layoutId="workflow-arrow" className="text-teal pt-0.5 flex-shrink-0">

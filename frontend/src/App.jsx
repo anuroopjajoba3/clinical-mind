@@ -19,6 +19,7 @@ import ComparisonPanel    from './components/ComparisonPanel'
 import CDSHooksDemo       from './components/CDSHooksDemo'
 import PatientRail        from './components/PatientRail'
 import PatientDashboard   from './components/PatientDashboard'
+import CursorFX           from './components/CursorFX'
 
 // ── constants ──────────────────────────────────────────────────────
 const EXAMPLE_QUESTIONS = [
@@ -369,7 +370,9 @@ export default function App() {
   if (!user) return <AuthScreen onAuthenticated={setUser} />
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: '#F8FAFC', position: 'relative' }}>
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: '#F8FAFC', position: 'relative', cursor: 'none' }}>
+
+      <CursorFX />
 
       {/* ── AMBIENT BACKGROUND BLOBS ── */}
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0 }}>

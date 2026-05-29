@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion'
 import { Shield, Zap, FileCheck } from 'lucide-react'
 import { BtnPrimary, BtnOutline } from '../ui/Button'
+import MagneticText from '../../components/MagneticText'
 
 // Place your uploaded image at: frontend/src/assets/hero-doctor.jpg
 // Then replace the URL below with: import heroBg from '../../assets/hero-doctor.jpg'
-const HERO_BG = 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=1800&q=85&auto=format&fit=crop'
+import heroBg from '../../assets/hero-doctor.jpg'
+const HERO_BG = heroBg
 
 const TRUST_BADGES = [
   { icon: Shield,    label: 'HIPAA Ready' },
@@ -74,9 +76,9 @@ export default function HeroSection() {
               transition={{ duration: 0.75, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
               className="font-sans text-[clamp(2.5rem,5vw,4.5rem)] font-extrabold leading-[1.06] tracking-[-0.03em] text-white"
             >
-              Clinical intelligence
+              <MagneticText text="Clinical intelligence" radius={90} strength={20} />
               <br />
-              <span className="text-teal-muted">built for medicine.</span>
+              <span className="text-teal-muted"><MagneticText text="built for medicine." radius={90} strength={20} /></span>
             </motion.h1>
 
             {/* Subheadline */}

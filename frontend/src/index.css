@@ -12,6 +12,12 @@
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    cursor: none;
+  }
+
+  /* Restore cursor on mobile — custom cursor doesn't make sense on touch */
+  @media (hover: none) {
+    body { cursor: auto; }
   }
 
   ::-webkit-scrollbar { width: 5px; }
