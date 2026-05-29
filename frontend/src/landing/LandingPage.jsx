@@ -1,5 +1,6 @@
 import LandingNav from './sections/LandingNav'
 import HeroSection from './sections/HeroSection'
+import TrustedBySection from './sections/TrustedBySection'
 import PipelineStrip from './sections/PipelineStrip'
 import FeatureSection from './sections/FeatureSection'
 import EvidenceSection from './sections/EvidenceSection'
@@ -12,10 +13,11 @@ import LandingFooter from './sections/LandingFooter'
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white text-ink antialiased">
+    <div className="min-h-screen bg-white text-slate-900 antialiased">
       <LandingNav />
       <main>
         <HeroSection />
+        <TrustedBySection />
         <PipelineStrip />
         <FeatureSection />
         <EvidenceSection />
