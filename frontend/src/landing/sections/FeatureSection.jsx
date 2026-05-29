@@ -147,20 +147,20 @@ export default function FeatureSection() {
         />
       </div>
 
-      <div className="relative max-w-[1080px] mx-auto">
+      <div className="relative max-w-[1200px] mx-auto">
         <Reveal>
-          <p className="font-sans text-xs font-semibold tracking-[0.08em] uppercase text-[#888888] mb-6">
+          <p className="font-sans text-xs font-semibold tracking-[0.1em] uppercase text-teal mb-4">
             LangGraph clinical pipeline
           </p>
-          <h2 className="font-sans text-[clamp(2.25rem,4vw,3.5rem)] font-extrabold leading-[1.08] tracking-[-0.025em] text-ink max-w-[640px]">
+          <h2 className="font-sans text-[clamp(2.25rem,4vw,3.25rem)] font-extrabold leading-[1.08] tracking-[-0.025em] text-slate-900 max-w-[600px]">
             From FHIR context to evidence written back to the EMR.
           </h2>
         </Reveal>
 
         <div className="mt-16 grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
           <Reveal delay={0.08}>
-            <div className="relative aspect-[4/5] rounded-lg overflow-hidden bg-[#B8D0E0]">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#9EC8E0] via-[#7BA89E] to-[#5B8F85] opacity-90" />
+            <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-[#0A1628]">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#0E2A4A] via-[#0A1F3A] to-[#060E1A]" />
               <PipelineMockup />
             </div>
           </Reveal>
@@ -173,14 +173,14 @@ export default function FeatureSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.05, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-                className="flex items-start justify-between gap-5 py-6 border-b border-[#E8E4DC] first:pt-0 last:border-0"
+                className="flex items-start justify-between gap-5 py-6 border-b border-slate-100 first:pt-0 last:border-0"
               >
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-sans text-[17px] font-bold text-ink mb-1.5">{f.title}</h3>
-                  <p className="font-serif text-sm text-[#666666] leading-relaxed">{f.desc}</p>
+                  <h3 className="font-sans text-[16px] font-bold text-slate-900 mb-1.5">{f.title}</h3>
+                  <p className="font-sans text-[13px] text-slate-500 leading-relaxed">{f.desc}</p>
                 </div>
                 <motion.span
-                  className="font-sans text-xs font-semibold text-[#C8C4BA] tracking-wide flex-shrink-0 pt-0.5"
+                  className="font-sans text-xs font-semibold text-slate-300 tracking-wide flex-shrink-0 pt-0.5"
                   initial={{ opacity: 0 }}
                   whileInView={{ opacity: 1 }}
                   viewport={{ once: true }}
