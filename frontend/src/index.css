@@ -7,7 +7,7 @@
   * { box-sizing: border-box; }
 
   body {
-    background-color: #F7F3EC;
+    background-color: transparent;
     color: #0A1628;
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -31,7 +31,7 @@
   .font-body    { font-family: 'Inter', system-ui, sans-serif; }
 
   /* Surfaces */
-  .surface-cream  { background-color: #F7F3EC; }
+  .surface-cream  { background-color: transparent; }
   .surface-white  { background-color: #FFFFFF; }
   .surface-navy   { background-color: #0A1628; }
 

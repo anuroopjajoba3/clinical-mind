@@ -369,7 +369,41 @@ export default function App() {
   if (!user) return <AuthScreen onAuthenticated={setUser} />
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: '#FAF8F4' }}>
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: '#F8FAFC', position: 'relative' }}>
+
+      {/* ── AMBIENT BACKGROUND BLOBS ── */}
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0 }}>
+        <motion.div
+          animate={{ scale: [1, 1.2, 1], x: [0, 30, 0], y: [0, -40, 0] }}
+          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
+          style={{
+            position: 'absolute', top: '-10%', right: '10%',
+            width: 600, height: 600, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(6,182,212,0.12) 0%, rgba(14,116,144,0.06) 50%, transparent 70%)',
+            filter: 'blur(60px)',
+          }}
+        />
+        <motion.div
+          animate={{ scale: [1, 1.15, 1], x: [0, -25, 0], y: [0, 50, 0] }}
+          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut', delay: 6 }}
+          style={{
+            position: 'absolute', bottom: '5%', left: '20%',
+            width: 500, height: 500, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(99,102,241,0.10) 0%, rgba(79,70,229,0.05) 50%, transparent 70%)',
+            filter: 'blur(70px)',
+          }}
+        />
+        <motion.div
+          animate={{ scale: [1, 1.3, 1], x: [0, 20, 0], y: [0, -20, 0] }}
+          transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut', delay: 3 }}
+          style={{
+            position: 'absolute', top: '40%', right: '30%',
+            width: 300, height: 300, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%)',
+            filter: 'blur(50px)',
+          }}
+        />
+      </div>
 
       {/* ── LEFT RAIL ── */}
       <PatientRail
@@ -383,66 +417,90 @@ export default function App() {
       />
 
       {/* ── MAIN AREA ── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
 
         {/* ── TOP BAR ── */}
         <motion.header
-          initial={{ y: -8, opacity: 0 }}
+          initial={{ y: -10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          className="h-[60px] flex-shrink-0 flex items-center justify-between px-6 bg-white/90 backdrop-blur-md border-b border-[#E8E4DC]"
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="h-[62px] flex-shrink-0 flex items-center justify-between px-6 border-b border-slate-100"
+          style={{ backdropFilter: 'blur(16px)', background: 'rgba(255,255,255,0.80)', boxShadow: '0 1px 0 rgba(0,0,0,0.04)' }}
         >
+          {/* Brand */}
           <a href="/" className="flex items-center gap-2.5 group">
             <motion.div
-              className="w-8 h-8 rounded-lg bg-ink flex items-center justify-center text-white text-sm"
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.06, rotate: -2 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+              className="w-8 h-8 rounded-lg bg-[#060E1A] flex items-center justify-center"
             >
-              ⚕
+              <span className="font-sans text-[11px] font-extrabold text-[#67C5D5]">CM</span>
             </motion.div>
-            <span className="font-serif text-lg font-extrabold text-ink tracking-tight">ClinicalMed</span>
+            <span className="font-sans text-[15px] font-bold text-slate-900 tracking-tight">ClinicalMed</span>
           </a>
 
-          <div className="flex items-center gap-3">
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setMainView(mainView === 'discharge' ? 'search' : 'discharge')}
-              className={`inline-flex items-center gap-2 font-sans text-xs font-semibold px-3 py-2 rounded-lg border transition-colors ${
-                mainView === 'discharge'
-                  ? 'bg-[#0E7490] text-white border-[#0E7490]'
-                  : 'text-[#555] border-[#E8E4DC] bg-[#FAFAF8] hover:border-[#0E7490]/40'
-              }`}
-            >
-              <Activity size={13} strokeWidth={2} />
-              Discharge
-            </motion.button>
+          {/* Nav pills */}
+          <div className="flex items-center gap-1.5 bg-slate-100 rounded-xl p-1">
+            {[
+              { id: 'search',    label: 'Evidence',  icon: Search },
+              { id: 'discharge', label: 'Discharge', icon: Activity },
+            ].map(({ id, label, icon: Icon }) => (
+              <motion.button
+                key={id}
+                type="button"
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setMainView(id)}
+                className={`relative inline-flex items-center gap-2 px-3.5 py-2 rounded-lg font-sans text-[12px] font-semibold transition-colors ${
+                  mainView === id
+                    ? 'text-slate-900'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {mainView === id && (
+                  <motion.div
+                    layoutId="nav-pill"
+                    className="absolute inset-0 bg-white rounded-lg shadow-sm"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <Icon size={13} strokeWidth={2} className="relative z-10" />
+                <span className="relative z-10">{label}</span>
+              </motion.button>
+            ))}
+          </div>
 
+          {/* Right controls */}
+          <div className="flex items-center gap-2">
             <motion.button
               type="button"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => setShowHistory(true)}
-              className="inline-flex items-center gap-2 font-sans text-xs font-medium text-[#555] px-3 py-2 rounded-lg border border-[#E8E4DC] bg-[#FAFAF8] hover:border-[#5B8F85]/40 transition-colors"
+              className="inline-flex items-center gap-2 font-sans text-[12px] font-medium text-slate-500 hover:text-slate-800 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
             >
-              <Clock size={14} strokeWidth={1.75} />
+              <Clock size={13} strokeWidth={2} />
               History
             </motion.button>
 
-            <div className="flex items-center gap-2 pl-2 border-l border-[#E8E4DC]">
-              <div className="w-8 h-8 rounded-full bg-[#5B8F85] flex items-center justify-center text-white font-sans text-xs font-semibold">
+            <div className="w-px h-5 bg-slate-200 mx-1" />
+
+            <div className="flex items-center gap-2">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0E7490] to-[#0EA5E9] flex items-center justify-center text-white font-sans text-[12px] font-bold cursor-default shadow-sm"
+              >
                 {user.name?.charAt(0).toUpperCase() || 'U'}
-              </div>
-              <span className="font-sans text-sm font-medium text-ink hidden sm:inline">{user.name}</span>
+              </motion.div>
+              <span className="font-sans text-[13px] font-medium text-slate-700 hidden sm:inline max-w-[120px] truncate">{user.name}</span>
               <motion.button
                 type="button"
                 onClick={handleLogout}
-                className="p-2 text-[#888] hover:text-ink rounded-lg hover:bg-[#F4F0E8] transition-colors"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 title="Sign out"
+                className="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
               >
-                <LogOut size={16} strokeWidth={1.75} />
+                <LogOut size={15} strokeWidth={1.75} />
               </motion.button>
             </div>
           </div>
@@ -467,7 +525,8 @@ export default function App() {
           ) : (
             <motion.div
               key="search"
-              className="flex-1 overflow-y-auto bg-gradient-to-b from-[#FAF8F4] via-[#F7F3EC] to-[#F4F0E8]"
+              className="flex-1 overflow-y-auto"
+              style={{ background: 'transparent' }}
               {...fadeIn}
             >
               <div className="max-w-[760px] mx-auto px-6 py-10 pb-16">
