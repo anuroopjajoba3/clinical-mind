@@ -876,15 +876,20 @@ export default function App() {
                       {/* Question header */}
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 12 }}>
                         <div style={{ flex: 1 }}>
-                          <p className="section-label" style={{ marginBottom: 6 }}>Clinical Question</p>
-                          <h2 className="font-display"
-                              style={{ fontSize: 26, color: T.navy, lineHeight: 1.25, letterSpacing: '-0.01em' }}>
+                          <p style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#0E7490', marginBottom: 8 }}>Clinical Question</p>
+                          <h2 style={{ fontFamily: 'Inter', fontSize: 'clamp(1.3rem,2.5vw,1.7rem)', fontWeight: 800, color: '#0A1628', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
                             {jobStatus.question}
                           </h2>
                         </div>
                         <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                          onClick={handleReset} className="btn-ghost"
-                          style={{ fontSize: 12, padding: '6px 12px', flexShrink: 0 }}>
+                          onClick={handleReset}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            fontSize: 12, padding: '7px 14px', borderRadius: 9, flexShrink: 0,
+                            fontFamily: 'Inter', fontWeight: 600, cursor: 'pointer',
+                            background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(14,116,144,0.2)',
+                            color: '#0E7490', backdropFilter: 'blur(8px)',
+                          }}>
                           <X size={13} /> New Search
                         </motion.button>
                       </div>
@@ -900,9 +905,9 @@ export default function App() {
                               <motion.div key="running" {...fadeIn}
                                 style={{
                                   display: 'flex', alignItems: 'center', gap: 8,
-                                  padding: '6px 14px', borderRadius: 4,
-                                  background: '#EFF6FF', border: '1px solid #BFDBFE',
-                                  fontFamily: 'Inter', fontSize: 12, fontWeight: 500, color: '#1D4ED8',
+                                  padding: '6px 16px', borderRadius: 20,
+                                  background: 'rgba(6,182,212,0.10)', border: '1px solid rgba(6,182,212,0.3)',
+                                  fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: '#0E7490',
                                 }}>
                                 <Spinner />
                                 Synthesising evidence…
@@ -911,8 +916,8 @@ export default function App() {
                               <motion.div key="complete" {...fadeIn}
                                 style={{
                                   display: 'flex', alignItems: 'center', gap: 6,
-                                  padding: '6px 14px', borderRadius: 4,
-                                  background: '#F0FDF4', border: '1px solid #BBF7D0',
+                                  padding: '6px 16px', borderRadius: 20,
+                                  background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.3)',
                                   fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: '#065F46',
                                 }}>
                                 <CheckCheck size={14} strokeWidth={2.5} />
@@ -922,9 +927,9 @@ export default function App() {
                               <motion.div key="error" {...fadeIn}
                                 style={{
                                   display: 'flex', alignItems: 'center', gap: 6,
-                                  padding: '6px 14px', borderRadius: 4,
-                                  background: '#FEF2F2', border: '1px solid #FECACA',
-                                  fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: '#991B1B',
+                                  padding: '6px 16px', borderRadius: 20,
+                                  background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+                                  fontFamily: 'Inter', fontSize: 12, fontWeight: 600, color: '#DC2626',
                                 }}>
                                 <X size={13} strokeWidth={2.5} />
                                 Stopped
