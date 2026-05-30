@@ -1,4 +1,3 @@
-import CursorFX from '../components/CursorFX'
 import LandingNav from './sections/LandingNav'
 import HeroSection from './sections/HeroSection'
 import TrustedBySection from './sections/TrustedBySection'
@@ -15,7 +14,6 @@ import LandingFooter from './sections/LandingFooter'
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white text-slate-900 antialiased">
-      <CursorFX />
       <LandingNav />
       <main>
         <HeroSection />

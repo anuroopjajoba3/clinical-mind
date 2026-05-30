@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Shield, Zap, FileCheck, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { authAPI, checkApiHealth, formatApiError } from '../api'
-import CursorFX from './CursorFX'
+import AnatomicalBG from './AnatomicalBG'
 
 const FEATURES = [
   { icon: Shield,    text: 'HIPAA-ready infrastructure' },
@@ -54,15 +54,15 @@ export default function AuthScreen({ onAuthenticated }) {
   }
 
   const inputCls = (field) =>
-    `w-full px-4 py-3 rounded-xl border font-sans text-sm text-slate-900 placeholder:text-slate-300 outline-none transition-all ${
+    `w-full px-4 py-3 rounded-xl border font-sans text-sm text-cyan-50 placeholder:text-[rgba(148,220,232,0.3)] outline-none transition-all ${
       focused === field
-        ? 'border-cyan-500 bg-white shadow-[0_0_0_3px_rgba(6,182,212,0.15)]'
-        : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+        ? 'border-cyan-400 bg-[rgba(6,182,212,0.08)] shadow-[0_0_0_3px_rgba(6,182,212,0.15)]'
+        : 'border-[rgba(103,197,213,0.15)] bg-[rgba(255,255,255,0.04)] hover:border-[rgba(103,197,213,0.3)]'
     }`
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', overflow: 'hidden', fontFamily: 'Inter, system-ui, sans-serif', cursor: 'none' }}>
-      <CursorFX />
+    <div style={{ display: 'flex', minHeight: '100vh', overflow: 'hidden', fontFamily: 'Inter, system-ui, sans-serif', position: 'relative', background: '#060E1A' }}>
+      <AnatomicalBG dark={true} />
 
       {/* ══════════════════════════════════════════
           LEFT PANEL — dark brand
@@ -74,9 +74,10 @@ export default function AuthScreen({ onAuthenticated }) {
         position: 'relative',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        background: '#060E1A',
+        background: 'transparent',
         overflow: 'hidden',
         padding: '3rem 3.5rem',
+        zIndex: 1,
       }}
         className="lg:flex"
       >
@@ -222,7 +223,7 @@ export default function AuthScreen({ onAuthenticated }) {
       {/* ══════════════════════════════════════════
           RIGHT PANEL — form
       ══════════════════════════════════════════ */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#F8FAFC', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'rgba(6,14,26,0.75)', backdropFilter: 'blur(2px)', position: 'relative', overflow: 'hidden', zIndex: 1 }}>
 
         {/* Subtle background glow */}
         <motion.div
@@ -258,7 +259,15 @@ export default function AuthScreen({ onAuthenticated }) {
           <motion.div
             initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-            style={{ width: '100%', maxWidth: 400 }}
+            style={{
+              width: '100%', maxWidth: 420,
+              background: 'rgba(255,255,255,0.05)',
+              backdropFilter: 'blur(24px)',
+              border: '1px solid rgba(103,197,213,0.15)',
+              borderRadius: 20,
+              padding: '2.5rem 2.25rem',
+              boxShadow: '0 24px 80px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
+            }}
           >
             {/* Heading */}
             <AnimatePresence mode="wait">
@@ -266,10 +275,10 @@ export default function AuthScreen({ onAuthenticated }) {
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.22 }}
                 style={{ marginBottom: 28 }}>
-                <h1 style={{ fontFamily: 'Inter', fontSize: '1.875rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.03em', lineHeight: 1.15, marginBottom: 8 }}>
+                <h1 style={{ fontFamily: 'Inter', fontSize: '1.875rem', fontWeight: 800, color: '#F0FDFF', letterSpacing: '-0.03em', lineHeight: 1.15, marginBottom: 8 }}>
                   {isRegister ? 'Create account' : 'Welcome back'}
                 </h1>
-                <p style={{ fontFamily: 'Inter', fontSize: 14, color: '#64748B', lineHeight: 1.6 }}>
+                <p style={{ fontFamily: 'Inter', fontSize: 14, color: 'rgba(148,220,232,0.75)', lineHeight: 1.6 }}>
                   {isRegister
                     ? 'Join clinical teams using AI evidence synthesis.'
                     : 'Sign in to your clinical evidence workspace.'}
@@ -288,16 +297,16 @@ export default function AuthScreen({ onAuthenticated }) {
 
             {/* Card */}
             <motion.div layout
-              style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 20, boxShadow: '0 8px 48px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(103,197,213,0.12)', borderRadius: 16, overflow: 'hidden' }}>
 
               {/* Tabs */}
-              <div style={{ display: 'flex', borderBottom: '1px solid #F1F5F9' }}>
+              <div style={{ display: 'flex', borderBottom: '1px solid rgba(103,197,213,0.12)' }}>
                 {[['login','Sign in'],['register','Create account']].map(([m, label]) => (
                   <button key={m} type="button" onClick={() => { setMode(m); setError('') }}
                     style={{
                       flex: 1, padding: '14px 0', fontFamily: 'Inter', fontSize: 13, fontWeight: 600,
                       background: 'none', border: 'none', cursor: 'pointer', position: 'relative',
-                      color: mode === m ? '#0F172A' : '#94A3B8', transition: 'color 0.2s',
+                      color: mode === m ? '#E0FFFE' : 'rgba(148,220,232,0.45)', transition: 'color 0.2s',
                     }}>
                     {label}
                     {mode === m && (
@@ -320,7 +329,7 @@ export default function AuthScreen({ onAuthenticated }) {
                     {isRegister && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25 }}>
-                        <label style={{ display: 'block', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Full name</label>
+                        <label style={{ display: 'block', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: 'rgba(148,220,232,0.6)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Full name</label>
                         <input type="text" value={name} onChange={e => setName(e.target.value)}
                           onFocus={() => setFocused('name')} onBlur={() => setFocused(null)}
                           placeholder="Dr. Jane Smith" autoComplete="name"
@@ -329,7 +338,7 @@ export default function AuthScreen({ onAuthenticated }) {
                     )}
 
                     <div>
-                      <label style={{ display: 'block', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Email</label>
+                      <label style={{ display: 'block', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: 'rgba(148,220,232,0.6)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Email</label>
                       <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
                         onFocus={() => setFocused('email')} onBlur={() => setFocused(null)}
                         placeholder="you@hospital.org" autoComplete="email"
@@ -337,7 +346,7 @@ export default function AuthScreen({ onAuthenticated }) {
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Password</label>
+                      <label style={{ display: 'block', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, color: 'rgba(148,220,232,0.6)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Password</label>
                       <div style={{ position: 'relative' }}>
                         <input type={showPass ? 'text' : 'password'} required value={password}
                           onChange={e => setPassword(e.target.value)}
@@ -355,7 +364,7 @@ export default function AuthScreen({ onAuthenticated }) {
 
                       {/* Password strength */}
                       {isRegister && password.length > 0 && (
-                        <div style={{ marginTop: 8, height: 4, borderRadius: 4, background: '#F1F5F9', overflow: 'hidden' }}>
+                        <div style={{ marginTop: 8, height: 4, borderRadius: 4, background: 'rgba(103,197,213,0.1)', overflow: 'hidden' }}>
                           <motion.div
                             style={{
                               height: '100%', borderRadius: 4,
@@ -383,7 +392,7 @@ export default function AuthScreen({ onAuthenticated }) {
                       whileTap={{ scale: loading ? 1 : 0.97 }}
                       style={{
                         width: '100%', padding: '14px 0', borderRadius: 12, border: 'none',
-                        background: 'linear-gradient(135deg, #060E1A 0%, #0E2A45 100%)',
+                        background: 'linear-gradient(135deg, #0E7490 0%, #06B6D4 100%)',
                         color: 'white', fontFamily: 'Inter', fontSize: 14, fontWeight: 600,
                         cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1,
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
