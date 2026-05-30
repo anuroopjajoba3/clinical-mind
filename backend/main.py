@@ -27,7 +27,7 @@ from prometheus_client import Counter, Histogram
 
 from database import (
     get_db, create_tables, Job, User,
-    Patient, DischargeEnrollment, DailyRiskScore, CareCoordinator, CoordinatorCheckin,
+    Patient, DischargeEnrollment, DailyRiskScore, CoordinatorCheckin,
 )
 import fhir_client as fhir
 import patient_memory as memory

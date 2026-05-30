@@ -15,10 +15,9 @@ a suggestion card.  If not, we return an empty cards list (no noise).
 """
 
 import os
-import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional
 
@@ -233,7 +232,6 @@ async def cds_order_sign(body: CDSHookRequest):
     the prefetch, runs a rule-based interaction check, and returns a warning
     card for any major interactions detected.
     """
-    patient_id = body.context.get("patientId")
     draft_orders = body.context.get("draftOrders") or {}
 
     # Extract new drug name(s) from the draft MedicationRequest bundle
