@@ -538,30 +538,34 @@ export default function App() {
                       {!selectedPatient && <WorkflowStrip />}
 
                       <div className="mb-8">
+                        <motion.p
+                          style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#0E7490', marginBottom: 10 }}
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                          transition={{ duration: 0.4 }}
+                        >
+                          {selectedPatient ? 'Patient Evidence Search' : 'Clinical Evidence'}
+                        </motion.p>
                         <motion.h1
-                          className="font-serif text-[2.35rem] font-black text-ink leading-[1.1] tracking-tight mb-3"
+                          style={{ fontFamily: 'Inter', fontSize: 'clamp(1.75rem,3vw,2.4rem)', fontWeight: 800, color: '#0A1628', letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 10 }}
                           initial={{ opacity: 0, y: 12 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                         >
                           {selectedPatient ? (
-                            <>
-                              Evidence for{' '}
-                              <em className="italic text-[#5B8F85]">{selectedPatient.full_name}</em>
-                            </>
+                            <>Evidence for <span style={{ color: '#0E7490' }}>{selectedPatient.full_name}</span></>
                           ) : (
                             'Run a clinical evidence search'
                           )}
                         </motion.h1>
                         <motion.p
-                          className="font-sans text-[15px] text-[#555] leading-relaxed max-w-lg"
+                          style={{ fontFamily: 'Inter', fontSize: 14, color: '#64748B', lineHeight: 1.7, maxWidth: 480 }}
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           transition={{ delay: 0.1, duration: 0.4 }}
                         >
                           {selectedPatient
                             ? "LangGraph agents will use this patient's FHIR context, search PubMed and trials, and stream a synthesis."
-                            : 'Select a patient in the rail, or search globally. Eight agents · live SSE · EMR write-back.'}
+                            : 'Select a patient or search globally. Eight agents · live SSE · EMR write-back.'}
                         </motion.p>
                       </div>
 
@@ -573,12 +577,16 @@ export default function App() {
                         transition={{ delay: 0.18, duration: 0.4 }}>
                         <motion.div
                           layout
-                          className="bg-white rounded-xl overflow-hidden transition-shadow duration-300"
                           style={{
-                            border: `1.5px solid ${searchFocused ? '#5B8F85' : '#E8E4DC'}`,
+                            borderRadius: 16,
+                            overflow: 'hidden',
+                            background: 'rgba(255,255,255,0.85)',
+                            backdropFilter: 'blur(12px)',
+                            border: searchFocused ? '1.5px solid rgba(14,116,144,0.5)' : '1.5px solid rgba(14,116,144,0.15)',
                             boxShadow: searchFocused
-                              ? '0 0 0 3px rgba(91, 143, 133, 0.12), 0 8px 32px rgba(10, 22, 40, 0.08)'
-                              : '0 4px 24px rgba(10, 22, 40, 0.06)',
+                              ? '0 0 0 3px rgba(6,182,212,0.10), 0 8px 40px rgba(10,22,40,0.10)'
+                              : '0 4px 24px rgba(10,22,40,0.06)',
+                            transition: 'border-color 0.2s, box-shadow 0.2s',
                           }}
                         >
 
@@ -658,15 +666,20 @@ export default function App() {
                           <div style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             padding: '10px 18px',
-                            borderTop: `1px solid ${T.border}`,
+                            borderTop: '1px solid rgba(14,116,144,0.08)',
+                            background: 'rgba(248,250,252,0.6)',
                           }}>
                             <motion.button type="button"
                               whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
                               onClick={() => { setCompareMode(m => !m); setQuestionB('') }}
-                              className="btn-ghost"
                               style={{
-                                fontSize: 12, padding: '5px 12px',
-                                ...(compareMode ? { borderColor: '#7C3AED', color: '#7C3AED' } : {}),
+                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                fontSize: 12, padding: '6px 14px', borderRadius: 8,
+                                fontFamily: 'Inter', fontWeight: 600, cursor: 'pointer',
+                                background: compareMode ? 'rgba(124,58,237,0.08)' : 'transparent',
+                                border: compareMode ? '1px solid rgba(124,58,237,0.3)' : '1px solid rgba(14,116,144,0.2)',
+                                color: compareMode ? '#7C3AED' : '#0E7490',
+                                transition: 'all 0.15s',
                               }}>
                               <BarChart3 size={13} strokeWidth={2} />
                               {compareMode ? 'Cancel compare' : 'Compare two'}
@@ -674,10 +687,17 @@ export default function App() {
 
                             <motion.button
                               type="submit"
-                              whileHover={{ scale: 1.02 }}
+                              whileHover={{ scale: 1.02, boxShadow: '0 6px 20px rgba(6,182,212,0.3)' }}
                               whileTap={{ scale: 0.97 }}
                               disabled={!question.trim() || (compareMode && !questionB.trim()) || isSubmitting}
-                              className="inline-flex items-center gap-2 bg-ink text-white font-sans text-sm font-semibold px-5 py-2.5 rounded-lg disabled:opacity-40 transition-opacity"
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 8,
+                                background: 'linear-gradient(135deg, #0A1628 0%, #0E2A45 100%)',
+                                color: 'white', fontFamily: 'Inter', fontSize: 13, fontWeight: 600,
+                                padding: '9px 20px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                                opacity: (!question.trim() || (compareMode && !questionB.trim()) || isSubmitting) ? 0.4 : 1,
+                                transition: 'opacity 0.2s',
+                              }}
                             >
                               {isSubmitting
                                 ? <><Spinner /> Searching…</>
@@ -698,8 +718,8 @@ export default function App() {
                           <motion.div
                             style={{
                               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                              padding: '8px 14px', marginBottom: 16, borderRadius: 4,
-                              background: '#EFF6FF', border: '1px solid #BFDBFE',
+                              padding: '8px 14px', marginBottom: 16, borderRadius: 10,
+                              background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.18)',
                             }}
                             initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -728,17 +748,17 @@ export default function App() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                               {smartSuggestions.map((q, i) => (
                                 <motion.button key={i} onClick={() => setQuestion(q)}
-                                  className="card-editorial-hover"
                                   style={{
                                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                    padding: '10px 14px', textAlign: 'left', cursor: 'pointer',
-                                    background: '#FFFBEB', borderColor: '#FDE68A', width: '100%',
+                                    padding: '11px 14px', textAlign: 'left', cursor: 'pointer',
+                                    background: 'rgba(6,182,212,0.05)', border: '1px solid rgba(6,182,212,0.2)',
+                                    borderRadius: 10, width: '100%',
                                   }}
                                   initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
                                   transition={{ delay: i * 0.06 }}
-                                  whileHover={{ x: 3 }}>
-                                  <span style={{ fontFamily: 'Inter', fontSize: 13, color: '#78350F', lineHeight: 1.5 }}>{q}</span>
-                                  <ChevronRight size={14} style={{ color: '#B45309', flexShrink: 0 }} />
+                                  whileHover={{ x: 3, background: 'rgba(6,182,212,0.09)' }}>
+                                  <span style={{ fontFamily: 'Inter', fontSize: 13, color: '#0E7490', lineHeight: 1.5 }}>{q}</span>
+                                  <ChevronRight size={14} style={{ color: '#0E7490', flexShrink: 0 }} />
                                 </motion.button>
                               ))}
                             </div>
@@ -755,18 +775,19 @@ export default function App() {
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                             {EXAMPLE_QUESTIONS.map((q, i) => (
                               <motion.button key={i} onClick={() => setQuestion(q)}
-                                className="card-editorial-hover"
                                 style={{
                                   padding: '12px 14px', textAlign: 'left',
                                   display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8,
                                   cursor: 'pointer', width: '100%',
+                                  background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)',
+                                  border: '1px solid rgba(14,116,144,0.12)', borderRadius: 12,
                                 }}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.32 + i * 0.07 }}
-                                whileHover={{ y: -2 }}>
-                                <span style={{ fontFamily: 'Inter', fontSize: 12, color: '#374151', lineHeight: 1.5 }}>{q}</span>
-                                <ChevronRight size={13} style={{ color: T.borderMid, flexShrink: 0, marginTop: 2 }} />
+                                whileHover={{ y: -2, boxShadow: '0 4px 16px rgba(6,182,212,0.12)', borderColor: 'rgba(14,116,144,0.3)' }}>
+                                <span style={{ fontFamily: 'Inter', fontSize: 12, color: '#334155', lineHeight: 1.5 }}>{q}</span>
+                                <ChevronRight size={13} style={{ color: '#0E7490', flexShrink: 0, marginTop: 2 }} />
                               </motion.button>
                             ))}
                           </div>
