@@ -1,41 +1,6 @@
 import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle, Loader2, Circle } from 'lucide-react'
-import Reveal from '../ui/Reveal'
-import MagneticText from '../../components/MagneticText'
-
-const FEATURES = [
-  {
-    num: '001',
-    title: 'Sync FHIR patient context',
-    desc: 'POST /patients/{fhir_id}/sync ingests live EMR data — conditions, medications, labs, and risk flags — before any evidence run starts.',
-  },
-  {
-    num: '002',
-    title: 'PICO extraction with patient context',
-    desc: 'The PICO agent structures the clinical question and builds PubMed MeSH and ClinicalTrials.gov queries, informed by FHIR context when a patient is selected.',
-  },
-  {
-    num: '003',
-    title: 'Parallel evidence retrieval',
-    desc: 'Search agent queries PubMed E-utilities and ClinicalTrials.gov API v2 in one step. Summarizer grades each source Level 1A through 4.',
-  },
-  {
-    num: '004',
-    title: 'Safety and contradiction checks',
-    desc: 'Contradiction agent flags conflicting trial conclusions. Drug interaction agent checks recommendations against the patient medication list from FHIR.',
-  },
-  {
-    num: '005',
-    title: 'Streaming clinical synthesis',
-    desc: 'Synthesize agent produces bottom line, ranked interventions, and follow-up evidence gaps. Results stream over SSE; completion when the full report object arrives.',
-  },
-  {
-    num: '006',
-    title: 'Write-back to the chart',
-    desc: 'POST /fhir/write-report stores the synthesis as a FHIR DocumentReference on the patient record for audit and continuity of care.',
-  },
-]
+import { motion } from 'framer-motion'
+import { CheckCircle, Loader2, Circle, Database, Brain, FileText, ShieldCheck } from 'lucide-react'
 
 const PIPELINE = [
   { label: 'FHIR Context',    desc: 'Patient EMR loaded' },
@@ -48,12 +13,54 @@ const PIPELINE = [
   { label: 'Follow-up',       desc: 'Evidence gaps' },
 ]
 
+const BENTO = [
+  {
+    icon: Database,
+    tag: 'FHIR R4',
+    title: 'Live patient context',
+    desc: 'Pulls conditions, medications, labs, and encounters before any evidence run. No copy-paste, no stale snapshots.',
+    size: 'md:col-span-1',
+    accent: 'text-[#0891B2]',
+    bg: 'bg-[#ECFEFF]',
+    border: 'border-[#BAE6FD]',
+  },
+  {
+    icon: Brain,
+    tag: 'LangGraph',
+    title: 'Deterministic 8-agent pipeline',
+    desc: 'Every run follows the same graph: FHIR → PICO → search → grade → contradiction → drug check → synthesis → follow-up. No surprises, full audit trail.',
+    size: 'md:col-span-2',
+    accent: 'text-blue-600',
+    bg: 'bg-blue-50',
+    border: 'border-blue-200',
+  },
+  {
+    icon: ShieldCheck,
+    tag: 'Safety',
+    title: 'Drug interaction check against live meds',
+    desc: "Flags conflicts between evidence recommendations and the patient's current medication list pulled from FHIR.",
+    size: 'md:col-span-2',
+    accent: 'text-rose-500',
+    bg: 'bg-rose-50',
+    border: 'border-rose-200',
+  },
+  {
+    icon: FileText,
+    tag: 'EMR Write-back',
+    title: 'Synthesis written to the chart',
+    desc: 'FHIR DocumentReference created on every run. Auditable, reproducible, tied to the record.',
+    size: 'md:col-span-1',
+    accent: 'text-emerald-600',
+    bg: 'bg-emerald-50',
+    border: 'border-emerald-200',
+  },
+]
+
 function PipelineMockup() {
   const [step, setStep] = useState(0)
-
   useEffect(() => {
     if (step < PIPELINE.length) {
-      const t = setTimeout(() => setStep(s => s + 1), step === 6 ? 1800 : 620)
+      const t = setTimeout(() => setStep(s => s + 1), step === 6 ? 1800 : 600)
       return () => clearTimeout(t)
     } else {
       const t = setTimeout(() => setStep(0), 2400)
@@ -62,141 +69,121 @@ function PipelineMockup() {
   }, [step])
 
   return (
-    <div className="absolute inset-0 flex flex-col justify-between p-6">
-      {/* Query chip */}
-      <div className="bg-white/15 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-3">
-        <p className="font-sans text-[10px] font-bold uppercase tracking-wider text-white/50 mb-1">Clinical query</p>
-        <p className="font-sans text-sm font-semibold text-white leading-snug">
+    <div className="p-6 h-full flex flex-col">
+      <div className="rounded-lg bg-slate-50 border border-slate-100 px-4 py-3 mb-4">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Active query</p>
+        <p className="text-[13px] font-semibold text-slate-700 leading-snug">
           SGLT2 inhibitors in HFrEF with CKD stage 3
         </p>
       </div>
-
-      {/* Agent steps */}
-      <div className="space-y-1.5 my-4">
+      <div className="flex-1 space-y-2.5">
         {PIPELINE.map((agent, i) => {
-          const isDone    = i < step
-          const isRunning = i === step
-          const isIdle    = i > step
+          const isDone = i < step, isRunning = i === step, isIdle = i > step
           return (
-            <motion.div
-              key={agent.label}
-              initial={{ opacity: 0, x: -6 }}
-              animate={{ opacity: isIdle ? 0.35 : 1, x: 0 }}
-              transition={{ delay: i * 0.03, duration: 0.25 }}
-              className="flex items-center gap-2.5"
-            >
+            <motion.div key={agent.label}
+              animate={{ opacity: isIdle ? 0.3 : 1 }}
+              transition={{ duration: 0.2 }}
+              className="flex items-center gap-3">
               <span className="flex-shrink-0">
-                {isDone    && <CheckCircle size={13} className="text-emerald-300" strokeWidth={2.5} />}
+                {isDone && <CheckCircle size={14} className="text-emerald-500" strokeWidth={2.5} />}
                 {isRunning && (
-                  <motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
-                    <Loader2 size={13} className="text-white" strokeWidth={2} />
+                  <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }}>
+                    <Loader2 size={14} className="text-[#0891B2]" strokeWidth={2} />
                   </motion.span>
                 )}
-                {isIdle    && <Circle size={13} className="text-white/30" strokeWidth={1.5} />}
+                {isIdle && <Circle size={14} className="text-slate-200" strokeWidth={1.5} />}
               </span>
-              <p className={`font-sans text-[11px] font-semibold flex-1 ${isDone ? 'text-emerald-200' : isRunning ? 'text-white' : 'text-white/30'}`}>
+              <p className={`font-sans text-[12px] font-medium flex-1 ${isDone ? 'text-emerald-600' : isRunning ? 'text-slate-800' : 'text-slate-300'}`}>
                 {agent.label}
               </p>
               {(isDone || isRunning) && (
-                <AnimatePresence>
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="font-sans text-[10px] text-white/45 flex-shrink-0"
-                  >
-                    {isDone ? agent.desc : agent.desc}
-                  </motion.p>
-                </AnimatePresence>
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                  className="font-sans text-[11px] text-slate-400 flex-shrink-0">
+                  {agent.desc}
+                </motion.p>
               )}
             </motion.div>
           )
         })}
       </div>
-
-      {/* Evidence grading badge */}
-      <div className="bg-white/92 backdrop-blur-sm border border-white/70 rounded-lg p-4">
-        <p className="font-sans text-[10px] font-bold tracking-[0.1em] uppercase text-[#888888] mb-1.5">
-          Evidence grading
-        </p>
-        <p className="font-display text-[22px] font-bold text-ink">
-          Level 1A{' '}
-          <span className="text-sm font-sans font-medium text-[#555555]">
-            · PubMed + ClinicalTrials.gov
-          </span>
-        </p>
-        <p className="font-sans text-xs text-[#555555] mt-1">Ranked for the selected FHIR patient</p>
-      </div>
+      {step >= PIPELINE.length && (
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+          className="mt-4 rounded-lg bg-[#ECFEFF] border border-[#A5F3FC] p-4 flex items-center justify-between">
+          <div>
+            <p className="font-sans text-[10px] font-bold uppercase tracking-widest text-[#0891B2]">Synthesis complete</p>
+            <p className="font-sans text-[15px] font-bold text-slate-800 mt-0.5">Level 1A · 94% confidence</p>
+          </div>
+          <div className="text-right">
+            <p className="font-sans text-[10px] text-slate-400">Sources</p>
+            <p className="font-sans text-[20px] font-extrabold text-slate-800">17</p>
+          </div>
+        </motion.div>
+      )}
     </div>
   )
 }
 
 export default function FeatureSection() {
   return (
-    <section id="features" className="relative py-28 md:py-32 px-6 md:px-12 bg-white overflow-hidden">
+    <section id="features" className="py-24 md:py-32 px-6 md:px-14 bg-white">
+      <div className="max-w-[1100px] mx-auto">
 
-      {/* Ambient gradient drift */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <motion.div
-          className="absolute top-[10%] right-[-5%] w-[500px] h-[500px] rounded-full bg-sky-light/40 blur-[140px]"
-          animate={{ scale: [1, 1.1, 1], x: [0, -35, 0], y: [0, 25, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div
-          className="absolute bottom-[5%] left-[-5%] w-[400px] h-[400px] rounded-full bg-teal/8 blur-[110px]"
-          animate={{ scale: [1, 1.14, 1], y: [0, -20, 0] }}
-          transition={{ duration: 17, repeat: Infinity, ease: 'easeInOut', delay: 7 }}
-        />
-      </div>
-
-      <div className="relative max-w-[1200px] mx-auto">
-        <Reveal>
-          <p className="font-sans text-xs font-semibold tracking-[0.1em] uppercase text-teal mb-4">
+        <motion.div initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }} transition={{ duration: 0.55 }}
+          className="mb-14">
+          <p className="font-sans text-[11px] font-semibold tracking-[0.14em] uppercase text-[#0891B2] mb-3">
             LangGraph clinical pipeline
           </p>
-          <h2 className="font-sans text-[clamp(2.25rem,4vw,3.25rem)] font-extrabold leading-[1.08] tracking-[-0.025em] text-slate-900 max-w-[600px]">
-            <MagneticText text="From FHIR context to evidence written back to the EMR." radius={75} strength={16} />
+          <h2 className="font-sans text-[clamp(2rem,4vw,2.75rem)] font-extrabold tracking-[-0.03em] text-slate-900 leading-[1.08] max-w-[540px]">
+            Every run follows the same deterministic path.
           </h2>
-        </Reveal>
+          <p className="mt-4 font-sans text-[15px] text-slate-500 max-w-[480px] leading-relaxed">
+            Eight specialized agents. No hallucination risk from skipped steps. Full audit trail on every evidence report.
+          </p>
+        </motion.div>
 
-        <div className="mt-16 grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
-          <Reveal delay={0.08}>
-            <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-[#0A1628]">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#0E2A4A] via-[#0A1F3A] to-[#060E1A]" />
-              <PipelineMockup />
+        <div className="grid md:grid-cols-3 gap-5">
+          {/* Pipeline live mockup — spans 1 col on md, full width left side */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }} transition={{ duration: 0.55 }}
+            className="md:col-span-1 rounded-2xl border border-slate-200 overflow-hidden bg-white min-h-[460px]"
+            style={{ boxShadow: '0 2px 12px rgba(15,23,42,0.06)' }}>
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <p className="font-sans text-[12px] font-semibold text-slate-700">Live pipeline</p>
+              <span className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Running
+              </span>
             </div>
-          </Reveal>
+            <PipelineMockup />
+          </motion.div>
 
-          <div>
-            {FEATURES.map((f, i) => (
-              <motion.div
-                key={f.num}
-                initial={{ opacity: 0, y: 8 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.05, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-                className="flex items-start justify-between gap-5 py-6 border-b border-slate-100 first:pt-0 last:border-0"
-              >
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-sans text-[16px] font-bold text-slate-900 mb-1.5">
-                    <MagneticText text={f.title} radius={55} strength={10} />
-                  </h3>
-                  <p className="font-sans text-[13px] text-slate-500 leading-relaxed">
-                    <MagneticText split="word" text={f.desc} radius={45} strength={6} />
-                  </p>
-                </div>
-                <motion.span
-                  className="font-sans text-xs font-semibold text-slate-300 tracking-wide flex-shrink-0 pt-0.5"
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.1 + i * 0.05, duration: 0.35 }}
-                >
-                  {f.num}
-                </motion.span>
-              </motion.div>
-            ))}
+          {/* Bento grid — 2 cols */}
+          <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {BENTO.map((item, i) => {
+              const Icon = item.icon
+              return (
+                <motion.div key={item.title}
+                  initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }} transition={{ duration: 0.45, delay: i * 0.08 }}
+                  whileHover={{ y: -3, transition: { duration: 0.18 } }}
+                  className="rounded-2xl border border-slate-200 bg-white p-6 flex flex-col gap-4"
+                  style={{ boxShadow: '0 1px 4px rgba(15,23,42,0.04)' }}>
+                  <div className={`w-9 h-9 rounded-xl ${item.bg} border ${item.border} flex items-center justify-center flex-shrink-0`}>
+                    <Icon className={`w-4 h-4 ${item.accent}`} strokeWidth={1.75} />
+                  </div>
+                  <div>
+                    <p className={`font-sans text-[10px] font-bold uppercase tracking-widest mb-2 ${item.accent}`}>{item.tag}</p>
+                    <h3 className="font-sans text-[15px] font-bold text-slate-800 leading-snug mb-2">{item.title}</h3>
+                    <p className="font-sans text-[13px] text-slate-500 leading-relaxed">{item.desc}</p>
+                  </div>
+                </motion.div>
+              )
+            })}
           </div>
         </div>
+
       </div>
     </section>
   )

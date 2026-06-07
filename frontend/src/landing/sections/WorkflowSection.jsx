@@ -1,264 +1,199 @@
-import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, Database, Brain, Search, AlertTriangle, FileText, Upload } from 'lucide-react'
-import Reveal from '../ui/Reveal'
-import MagneticText from '../../components/MagneticText'
+import { useState } from 'react'
+import { Database, Brain, Search, AlertTriangle, FileText, Upload } from 'lucide-react'
 
 const STEPS = [
   {
-    num: '01',
-    title: 'Connect patient context',
-    desc: 'FHIR R4 pulls live labs, meds, diagnoses, and encounters from your EMR. No copy-paste. No stale exports.',
-    icon: Database,
-    visual: 'fhir',
+    num: '01', icon: Database, title: 'Connect patient context',
+    desc: 'FHIR R4 pulls live labs, meds, diagnoses, and encounters directly from your EMR. No copy-paste. No stale exports.',
+    detail: [
+      { k: 'Conditions', v: 'HFrEF · CKD Stage 3 · T2DM' },
+      { k: 'Medications', v: 'Empagliflozin · Metformin · Furosemide' },
+      { k: 'Last eGFR', v: '41 mL/min/1.73m²' },
+      { k: 'NT-proBNP', v: '1,840 pg/mL (elevated)' },
+    ],
+    tag: 'FHIR R4',
   },
   {
-    num: '02',
-    title: 'AI builds longitudinal memory',
-    desc: 'Each run enriches persistent patient memory — trajectories, risk flags, and context that changes which evidence matters.',
-    icon: Brain,
-    visual: 'memory',
+    num: '02', icon: Brain, title: 'AI structures the clinical question',
+    desc: 'PICO agent extracts Patient, Intervention, Comparison, and Outcome from the free-text query, then builds targeted PubMed MeSH and ClinicalTrials queries.',
+    detail: [
+      { k: 'Population', v: 'HFrEF + CKD Stage 3' },
+      { k: 'Intervention', v: 'SGLT2 inhibitors' },
+      { k: 'Comparison', v: 'Standard of care' },
+      { k: 'Outcome', v: 'Hospitalization, eGFR decline' },
+    ],
+    tag: 'PICO',
   },
   {
-    num: '03',
-    title: 'Agents investigate evidence',
-    desc: 'Eight specialized agents query PubMed and ClinicalTrials.gov in parallel. Every source graded for this patient.',
-    icon: Search,
-    visual: 'agents',
+    num: '03', icon: Search, title: 'Parallel evidence search',
+    desc: 'PubMed E-utilities and ClinicalTrials.gov API queried simultaneously. Each abstract summarized and graded Level 1A–4 for clinical relevance.',
+    detail: [
+      { k: 'PubMed results', v: '14 relevant abstracts' },
+      { k: 'ClinicalTrials', v: '3 matching trials' },
+      { k: 'Top grade', v: 'Level 1A (EMPEROR-Reduced)' },
+      { k: 'Avg confidence', v: '87%' },
+    ],
+    tag: 'PubMed + Trials',
   },
   {
-    num: '04',
-    title: 'Contradictions are surfaced',
-    desc: 'Conflicting RCT conclusions are detected, explained, and ranked by severity — before they reach the clinician.',
-    icon: AlertTriangle,
-    visual: 'contradiction',
+    num: '04', icon: AlertTriangle, title: 'Contradictions surfaced',
+    desc: "Conflicting RCT conclusions detected, explained, and ranked by clinical severity — before they reach the chart. You see the conflict, not just the winner.",
+    detail: [
+      { k: 'Trial A', v: 'EMPEROR: benefit in HFrEF (NNT 19)' },
+      { k: 'Trial B', v: 'DAPA-CKD subgroup: reversed in CKD4+' },
+      { k: 'Severity', v: 'High — affects prescribing decision' },
+      { k: 'Resolution', v: 'Patient CKD Stage 3 — benefit likely' },
+    ],
+    tag: 'Contradiction',
   },
   {
-    num: '05',
-    title: 'Clinical synthesis generated',
-    desc: 'Structured reports stream in real time: bottom line, evidence grading, drug checks, and follow-up gaps.',
-    icon: FileText,
-    visual: 'synthesis',
+    num: '05', icon: FileText, title: 'Structured synthesis streamed',
+    desc: 'Bottom line, ranked interventions, drug interaction results, and follow-up gaps stream in real time. Report is complete when the full object arrives — not on status string.',
+    detail: [
+      { k: 'Bottom line', v: 'SGLT2i — Level 1A benefit' },
+      { k: 'Drug check', v: 'No interactions detected' },
+      { k: 'Confidence', v: '94%' },
+      { k: 'Run time', v: '3m 42s' },
+    ],
+    tag: 'Synthesis',
   },
   {
-    num: '06',
-    title: 'Reports written back to EMR',
-    desc: 'DocumentReference resources land in the FHIR record — auditable, reproducible, and ready for the chart.',
-    icon: Upload,
-    visual: 'emr',
+    num: '06', icon: Upload, title: 'Report written to EMR',
+    desc: 'FHIR DocumentReference created on the patient record. Auditable, reproducible, and available in the chart immediately after the run completes.',
+    detail: [
+      { k: 'Resource type', v: 'DocumentReference' },
+      { k: 'Patient', v: 'MRN-00421 · Sarah K.' },
+      { k: 'Status', v: 'final' },
+      { k: 'Date', v: new Date().toISOString().split('T')[0] },
+    ],
+    tag: 'FHIR Write-back',
   },
 ]
-
-function StepVisual({ type }) {
-  if (type === 'memory') {
-    return (
-      <div className="p-7 space-y-4">
-        <p className="font-sans text-[10px] font-bold uppercase tracking-wider text-white/30 mb-5">Patient longitudinal trends</p>
-        {[
-          { lab: 'eGFR', vals: [38, 42, 36, 44, 41], color: 'bg-teal' },
-          { lab: 'HbA1c', vals: [55, 60, 58, 65, 62], color: 'bg-clinical-blue' },
-          { lab: 'NT-proBNP', vals: [45, 50, 42, 55, 48], color: 'bg-emerald-400' },
-        ].map(({ lab, vals, color }) => (
-          <div key={lab} className="flex items-center gap-4">
-            <div className="w-20 font-sans text-xs text-white/50 flex-shrink-0">{lab}</div>
-            <div className="flex-1 h-9 flex items-end gap-1">
-              {vals.map((h, j) => (
-                <motion.div
-                  key={j}
-                  className={`flex-1 rounded-t ${j === vals.length - 1 ? color : 'bg-white/10'}`}
-                  style={{ height: `${h}%` }}
-                  initial={{ height: 0 }}
-                  animate={{ height: `${h}%` }}
-                  transition={{ delay: j * 0.06, duration: 0.5, ease: 'easeOut' }}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    )
-  }
-  if (type === 'agents') {
-    const labels = ['FHIR', 'PICO', 'Search', 'Grade', 'Contra', 'Drug', 'Synth', 'Write']
-    return (
-      <div className="p-7 grid grid-cols-4 gap-2.5">
-        <p className="col-span-4 font-sans text-[10px] font-bold uppercase tracking-wider text-white/30 mb-2">8 agents — parallel execution</p>
-        {labels.map((label, i) => (
-          <motion.div
-            key={i}
-            className={`aspect-square rounded-xl border flex flex-col items-center justify-center gap-1 ${
-              i < 5 ? 'bg-teal/10 border-teal/30' : 'bg-white/[0.04] border-white/10'
-            }`}
-            animate={i === 4 ? { scale: [1, 1.06, 1] } : {}}
-            transition={{ duration: 1.8, repeat: Infinity }}
-          >
-            <span className={`font-sans text-[9px] font-bold ${i < 5 ? 'text-teal' : 'text-white/25'}`}>{label}</span>
-            {i < 5 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
-          </motion.div>
-        ))}
-      </div>
-    )
-  }
-  if (type === 'contradiction') {
-    return (
-      <div className="p-7 space-y-3">
-        <p className="font-sans text-[10px] font-bold uppercase tracking-wider text-white/30 mb-4">Conflict detection</p>
-        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25">
-          <p className="font-sans text-xs font-semibold text-amber-300">Trial A · EMPEROR-Reduced</p>
-          <p className="font-sans text-[11px] text-amber-200/70 mt-1">SGLT2i reduces HF hospitalization — NNT 19</p>
-        </div>
-        <div className="flex items-center justify-center py-1">
-          <span className="font-sans text-[10px] font-bold text-red-400 uppercase tracking-wider px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20">⚠ Conflicting signal</span>
-        </div>
-        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-          <p className="font-sans text-xs font-semibold text-red-300">Trial B · DAPA-CKD subgroup</p>
-          <p className="font-sans text-[11px] text-red-200/70 mt-1">Primary endpoint direction reversed in CKD4+</p>
-        </div>
-      </div>
-    )
-  }
-  if (type === 'synthesis') {
-    return (
-      <div className="p-7 space-y-3">
-        <p className="font-sans text-[10px] font-bold uppercase tracking-wider text-white/30 mb-4">Streaming synthesis</p>
-        <div className="bg-teal/10 border border-teal/20 rounded-xl p-4">
-          <p className="font-sans text-[10px] font-bold uppercase tracking-wider text-teal mb-2">Clinical bottom line</p>
-          <p className="font-sans text-[12px] text-white/70 leading-snug">SGLT2 inhibitors show Level 1A benefit in HFrEF with CKD Stage 3 — drug interaction check cleared.</p>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {[['Grade', '1A'], ['Sources', '17'], ['Conflicts', '1']].map(([k, v]) => (
-            <div key={k} className="bg-white/[0.04] border border-white/[0.08] rounded-lg p-3 text-center">
-              <p className="font-sans text-[18px] font-extrabold text-white">{v}</p>
-              <p className="font-sans text-[10px] text-white/30 mt-0.5">{k}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-  if (type === 'emr') {
-    return (
-      <div className="p-7 space-y-3">
-        <p className="font-sans text-[10px] font-bold uppercase tracking-wider text-white/30 mb-4">FHIR write-back</p>
-        <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <p className="font-sans text-xs font-semibold text-emerald-300">DocumentReference created</p>
-          </div>
-          {[['Patient', 'MRN-00421 · Sarah K.'], ['Type', 'Clinical Evidence Report'], ['Status', 'final'], ['Date', new Date().toISOString().split('T')[0]]].map(([k, v]) => (
-            <div key={k} className="flex justify-between text-[11px] py-1 border-b border-white/[0.05]">
-              <span className="text-white/30">{k}</span>
-              <span className="text-white/60 font-mono">{v}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-  // fhir default
-  return (
-    <div className="p-7 space-y-3">
-      <p className="font-sans text-[10px] font-bold uppercase tracking-wider text-white/30 mb-4">FHIR R4 patient context</p>
-      {[
-        { label: 'Conditions', val: 'HFrEF · CKD Stage 3 · T2DM', color: 'text-teal' },
-        { label: 'Medications', val: 'Empagliflozin · Metformin · Furosemide', color: 'text-clinical-blue' },
-        { label: 'Last eGFR', val: '41 mL/min/1.73m²', color: 'text-emerald-400' },
-        { label: 'NT-proBNP', val: '1,840 pg/mL (elevated)', color: 'text-amber-400' },
-      ].map(({ label, val, color }) => (
-        <div key={label} className="flex justify-between items-start text-[11px] py-2 border-b border-white/[0.06]">
-          <span className="text-white/35 flex-shrink-0 mr-4">{label}</span>
-          <span className={`${color} text-right`}>{val}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
 
 export default function WorkflowSection() {
   const [active, setActive] = useState(0)
   const step = STEPS[active]
+  const Icon = step.icon
 
   return (
-    <section id="workflow" className="relative py-28 md:py-32 px-6 md:px-12 bg-white overflow-hidden">
+    <section id="workflow" className="py-24 md:py-32 px-6 md:px-14 bg-white">
+      <div className="max-w-[1100px] mx-auto">
 
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <motion.div
-          className="absolute -top-20 right-[10%] w-[550px] h-[550px] rounded-full bg-teal/5 blur-[150px]"
-          animate={{ scale: [1, 1.1, 1], x: [0, -35, 0], y: [0, 20, 0] }}
-          transition={{ duration: 21, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div
-          className="absolute bottom-[10%] left-[-5%] w-[400px] h-[400px] rounded-full bg-clinical-blue/5 blur-[120px]"
-          animate={{ scale: [1, 1.08, 1], y: [0, -25, 0] }}
-          transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut', delay: 7 }}
-        />
-      </div>
-
-      <div className="relative max-w-[1200px] mx-auto">
-        <Reveal>
-          <p className="font-sans text-[11px] font-semibold tracking-[0.12em] uppercase text-teal mb-3">
-            Clinical workflow
+        <motion.div initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }} transition={{ duration: 0.55 }}
+          className="mb-14">
+          <p className="font-sans text-[11px] font-semibold tracking-[0.14em] uppercase text-[#0891B2] mb-3">
+            How it works
           </p>
-          <h2 className="font-sans text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-[-0.025em] text-slate-900 max-w-[560px] leading-tight">
-            <MagneticText text="Evidence infrastructure, not a chatbot." radius={70} strength={14} />
+          <h2 className="font-sans text-[clamp(2rem,4vw,2.75rem)] font-extrabold tracking-[-0.03em] text-slate-900 leading-[1.08] max-w-[480px]">
+            Six steps from EMR to written-back synthesis.
           </h2>
-          <p className="font-sans text-[14px] text-slate-500 mt-4 max-w-[480px] leading-relaxed">
-            <MagneticText split="word" text="Six deterministic stages from EMR context to written-back synthesis. Every step auditable. Every output reproducible." radius={60} strength={8} />
-          </p>
-        </Reveal>
+        </motion.div>
 
-        <div className="mt-16 grid lg:grid-cols-2 gap-12 lg:gap-20 items-start">
-          <Reveal delay={0.08}>
-            <div className="bg-gradient-to-br from-[#0A1628] to-[#0E2A45] border border-white/[0.08] rounded-2xl overflow-hidden min-h-[340px]">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={step.visual}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <StepVisual type={step.visual} />
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </Reveal>
+        <div className="grid lg:grid-cols-[1fr_1.1fr] gap-10 lg:gap-16 items-start">
 
+          {/* Left — step list */}
           <div className="space-y-0">
             {STEPS.map((s, i) => {
-              const StepIcon = s.icon
+              const SIcon = s.icon
               const isActive = i === active
               return (
-                <Reveal key={s.num} delay={i * 0.04}>
-                  <button
-                    type="button"
-                    onClick={() => setActive(i)}
-                    className={`w-full text-left flex gap-5 py-5 border-b border-slate-100 transition-all duration-200 ${
-                      isActive ? 'opacity-100' : 'opacity-50 hover:opacity-75'
-                    }`}
-                  >
-                    <span className="font-sans text-xs font-semibold text-slate-300 pt-0.5 flex-shrink-0">{s.num}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <StepIcon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-teal' : 'text-slate-400'}`} strokeWidth={1.75} />
-                        <h3 className="font-sans text-[15px] font-bold text-slate-900">
-                          <MagneticText text={s.title} radius={55} strength={10} />
-                        </h3>
-                      </div>
-                      <p className="font-sans text-[13px] text-slate-500 leading-relaxed">
-                        <MagneticText split="word" text={s.desc} radius={50} strength={6} />
-                      </p>
+                <motion.button
+                  type="button"
+                  key={s.num}
+                  onClick={() => setActive(i)}
+                  initial={{ opacity: 0, x: -12 }} whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }} transition={{ duration: 0.4, delay: i * 0.06 }}
+                  className={`w-full text-left flex items-start gap-4 py-5 border-b border-slate-100 last:border-0 transition-all duration-200 group`}>
+
+                  {/* Number circle */}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${
+                    isActive
+                      ? 'bg-[#0891B2] text-white'
+                      : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'
+                  }`}>
+                    <span className="font-sans text-[11px] font-bold">{s.num}</span>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <SIcon className={`w-3.5 h-3.5 flex-shrink-0 transition-colors duration-200 ${isActive ? 'text-[#0891B2]' : 'text-slate-400'}`} strokeWidth={2} />
+                      <h3 className={`font-sans text-[14px] font-bold transition-colors duration-200 ${isActive ? 'text-slate-900' : 'text-slate-500 group-hover:text-slate-700'}`}>
+                        {s.title}
+                      </h3>
                     </div>
                     {isActive && (
-                      <motion.span layoutId="workflow-arrow" className="text-teal pt-0.5 flex-shrink-0">
-                        <ArrowRight className="w-4 h-4" />
-                      </motion.span>
+                      <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25 }}
+                        className="font-sans text-[13px] text-slate-500 leading-relaxed">
+                        {s.desc}
+                      </motion.p>
                     )}
-                  </button>
-                </Reveal>
+                  </div>
+
+                  {isActive && (
+                    <span className="text-[10px] font-bold text-[#0891B2] bg-[#ECFEFF] border border-[#A5F3FC] px-2 py-0.5 rounded-full flex-shrink-0 mt-1">
+                      {s.tag}
+                    </span>
+                  )}
+                </motion.button>
               )
             })}
           </div>
+
+          {/* Right — detail card */}
+          <div className="lg:sticky lg:top-24">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={active}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25 }}
+                className="rounded-2xl border border-slate-200 bg-white overflow-hidden"
+                style={{ boxShadow: '0 4px 20px rgba(15,23,42,0.07)' }}>
+
+                {/* Card header */}
+                <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#ECFEFF] border border-[#A5F3FC] flex items-center justify-center">
+                    <Icon className="w-4 h-4 text-[#0891B2]" strokeWidth={1.75} />
+                  </div>
+                  <div>
+                    <p className="font-sans text-[11px] font-bold uppercase tracking-widest text-[#0891B2]">Step {step.num}</p>
+                    <p className="font-sans text-[14px] font-bold text-slate-800">{step.title}</p>
+                  </div>
+                </div>
+
+                {/* Data rows — Notion property view */}
+                <div className="divide-y divide-slate-50">
+                  {step.detail.map(({ k, v }) => (
+                    <div key={k} className="flex items-start justify-between gap-4 px-6 py-3.5">
+                      <span className="font-sans text-[12px] text-slate-400 flex-shrink-0 min-w-[100px]">{k}</span>
+                      <span className="font-sans text-[12px] font-medium text-slate-700 text-right">{v}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Progress indicator */}
+                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-sans text-[10px] text-slate-400">Pipeline progress</span>
+                    <span className="font-sans text-[10px] font-semibold text-slate-600">Step {active + 1} of {STEPS.length}</span>
+                  </div>
+                  <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-[#0891B2] rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${((active + 1) / STEPS.length) * 100}%` }}
+                      transition={{ duration: 0.4, ease: 'easeOut' }}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
         </div>
       </div>
     </section>

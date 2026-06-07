@@ -1,42 +1,28 @@
 import { motion } from 'framer-motion'
-import { useScrollReveal } from '../hooks/useScrollReveal'
 
-const SYSTEMS = [
-  'Mayo Clinic',
-  'Johns Hopkins',
-  'Cleveland Clinic',
-  'Mass General',
-  'UCSF Health',
-  'Stanford Medicine',
-  'NYU Langone',
-]
+const SYSTEMS = ['Mayo Clinic', 'Johns Hopkins', 'Cleveland Clinic', 'Mass General', 'UCSF Health', 'Stanford Medicine', 'NYU Langone', 'Kaiser Permanente']
 
 export default function TrustedBySection() {
-  const { ref, visible } = useScrollReveal()
+  const doubled = [...SYSTEMS, ...SYSTEMS]
   return (
-    <div ref={ref} className="bg-slate-50 border-y border-slate-200 py-10 px-6 md:px-14 overflow-hidden">
-      <div className="max-w-[1200px] mx-auto">
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={visible ? { opacity: 1 } : {}}
-          transition={{ duration: 0.5 }}
-          className="font-sans text-[11px] font-semibold tracking-[0.12em] uppercase text-slate-400 text-center mb-7"
-        >
-          Designed for teams at leading health systems
-        </motion.p>
-        <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
-          {SYSTEMS.map((name, i) => (
-            <motion.span
-              key={name}
-              initial={{ opacity: 0, y: 6 }}
-              animate={visible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.4, delay: i * 0.06 }}
-              className="font-sans text-[13px] font-bold text-slate-300 tracking-wide select-none"
-            >
+    <div className="border-y border-slate-100 py-7 overflow-hidden bg-white">
+      <p className="font-sans text-[10px] font-semibold tracking-[0.18em] uppercase text-slate-300 text-center mb-5">
+        Designed for clinical teams at
+      </p>
+      <div className="relative">
+        <div className="absolute left-0 top-0 bottom-0 w-20 z-10 pointer-events-none"
+          style={{ background: 'linear-gradient(to right, #ffffff, transparent)' }} />
+        <div className="absolute right-0 top-0 bottom-0 w-20 z-10 pointer-events-none"
+          style={{ background: 'linear-gradient(to left, #ffffff, transparent)' }} />
+        <motion.div className="flex gap-14 whitespace-nowrap"
+          animate={{ x: ['0%', '-50%'] }}
+          transition={{ duration: 28, repeat: Infinity, ease: 'linear' }}>
+          {doubled.map((name, i) => (
+            <span key={i} className="font-sans text-[13px] font-semibold text-slate-200 tracking-wide select-none flex-shrink-0">
               {name}
-            </motion.span>
+            </span>
           ))}
-        </div>
+        </motion.div>
       </div>
     </div>
   )

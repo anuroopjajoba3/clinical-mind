@@ -1,80 +1,74 @@
 import { motion } from 'framer-motion'
-import Reveal from '../ui/Reveal'
+import { ArrowRight } from 'lucide-react'
 
 export default function CtaSection() {
   return (
-    <section id="cta" className="relative py-28 md:py-36 px-6 md:px-10 overflow-hidden bg-[#060E1A] text-white text-center">
+    <section id="cta" className="py-24 md:py-32 px-6 md:px-14 bg-white">
+      <div className="max-w-[1100px] mx-auto">
 
-      {/* Background image with overlay */}
-      <div className="absolute inset-0">
-        <img
-          src="https://images.unsplash.com/photo-1504813184591-01572f98c85f?w=1800&q=80&auto=format&fit=crop"
-          alt=""
-          className="w-full h-full object-cover object-center opacity-20"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#060E1A] via-[#060E1A]/80 to-[#060E1A]/60" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#060E1A]/40 via-transparent to-[#060E1A]/40" />
-      </div>
-
-      {/* Ambient blobs */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <motion.div
-          className="absolute top-[-10%] left-[15%] w-[500px] h-[500px] rounded-full bg-teal/10 blur-[140px]"
-          animate={{ scale: [1, 1.18, 1], x: [0, 35, 0], y: [0, -25, 0] }}
-          transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div
-          className="absolute bottom-[-5%] right-[20%] w-[400px] h-[400px] rounded-full bg-clinical-blue/8 blur-[110px]"
-          animate={{ scale: [1, 1.12, 1], x: [0, -28, 0], y: [0, 20, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut', delay: 5 }}
-        />
-      </div>
+          initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }} transition={{ duration: 0.55 }}
+          className="rounded-3xl border border-slate-200 bg-[#F8FAFC] p-10 md:p-16 flex flex-col md:flex-row md:items-center md:justify-between gap-10"
+          style={{ boxShadow: '0 2px 16px rgba(15,23,42,0.06)' }}>
 
-      <div className="relative max-w-2xl mx-auto">
-        <Reveal>
-          <span className="inline-flex items-center gap-2 bg-teal/15 border border-teal/25 text-teal-muted font-sans text-xs font-semibold tracking-wider uppercase px-4 py-2 rounded-full mb-8">
-            <span className="w-1.5 h-1.5 rounded-full bg-teal-light animate-pulse" />
-            Early access open
-          </span>
-          <h2 className="font-sans text-[clamp(2.25rem,5vw,3.75rem)] font-extrabold leading-[1.06] tracking-[-0.025em]">
-            The future of clinical intelligence<br />
-            <span className="text-teal-muted">starts here.</span>
-          </h2>
-          <p className="mt-5 font-sans text-[15px] text-white/50 leading-relaxed max-w-md mx-auto">
-            Join clinical teams on the waitlist. Early access includes dedicated onboarding, custom FHIR integration, and direct access to the engineering team.
-          </p>
-        </Reveal>
-
-        <Reveal delay={0.12}>
-          <form
-            className="mt-10 flex flex-col sm:flex-row gap-2 max-w-[420px] mx-auto"
-            onSubmit={e => e.preventDefault()}
-          >
-            <input
-              type="email"
-              placeholder="your@hospital.org"
-              className="flex-1 px-4 py-3 rounded-lg bg-white/[0.07] border border-white/10 text-white font-sans text-sm placeholder:text-white/25 outline-none focus:border-teal/40 transition-colors"
-            />
-            <button
-              type="submit"
-              className="px-6 py-3 bg-teal hover:bg-teal/90 text-white font-sans text-sm font-semibold rounded-lg transition-colors flex-shrink-0"
-            >
-              Get access
-            </button>
-          </form>
-          <p className="mt-4 font-sans text-xs text-white/25">
-            No commitment · HIPAA BAA available · Setup in 48 hours
-          </p>
-        </Reveal>
-
-        {/* Trust logos row */}
-        <Reveal delay={0.22}>
-          <div className="mt-14 pt-10 border-t border-white/[0.08] flex flex-wrap justify-center gap-8">
-            {['HIPAA Ready', 'SOC 2 Type II', 'FHIR R4 Native', 'HL7 Compliant'].map(label => (
-              <span key={label} className="font-sans text-[11px] font-semibold text-white/20 tracking-wider uppercase">{label}</span>
-            ))}
+          {/* Left */}
+          <div className="max-w-[460px]">
+            <span className="inline-flex items-center gap-2 font-sans text-[11px] font-semibold text-[#0891B2] tracking-[0.12em] uppercase bg-[#ECFEFF] border border-[#A5F3FC] px-3.5 py-1.5 rounded-full mb-6">
+              <motion.span className="w-1.5 h-1.5 rounded-full bg-[#06B6D4]"
+                animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.8, repeat: Infinity }} />
+              Early access open
+            </span>
+            <h2 className="font-sans text-[clamp(1.9rem,3.8vw,3rem)] font-extrabold tracking-[-0.03em] text-slate-900 leading-[1.07]">
+              The future of clinical intelligence starts here.
+            </h2>
+            <p className="mt-4 font-sans text-[15px] text-slate-500 leading-relaxed">
+              Join clinical teams on the waitlist. Early access includes dedicated onboarding,
+              custom FHIR integration, and direct access to the engineering team.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-5">
+              {['HIPAA Ready', 'SOC 2 Type II', 'FHIR R4 Native', 'HL7 Compliant'].map(label => (
+                <span key={label} className="flex items-center gap-1.5 font-sans text-[11px] font-semibold text-slate-400">
+                  <span className="w-1 h-1 rounded-full bg-slate-300" />
+                  {label}
+                </span>
+              ))}
+            </div>
           </div>
-        </Reveal>
+
+          {/* Right — form */}
+          <div className="w-full md:w-auto md:min-w-[320px]">
+            <div className="bg-white rounded-2xl border border-slate-200 p-7"
+              style={{ boxShadow: '0 2px 12px rgba(15,23,42,0.06)' }}>
+              <p className="font-sans text-[14px] font-bold text-slate-800 mb-1">Request early access</p>
+              <p className="font-sans text-[12px] text-slate-400 mb-5">No commitment · Setup in 48 hours</p>
+              <form onSubmit={e => e.preventDefault()} className="space-y-3">
+                <input
+                  type="email"
+                  placeholder="your@hospital.org"
+                  className="w-full px-4 py-3 rounded-lg bg-[#F8FAFC] border border-slate-200 text-slate-800 font-sans text-[13px] placeholder:text-slate-300 outline-none focus:border-[#0891B2] focus:ring-2 focus:ring-[#0891B2]/10 transition-all"
+                />
+                <button
+                  type="submit"
+                  className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-[#0891B2] hover:bg-[#0E7490] text-white font-sans text-[13px] font-semibold rounded-lg transition-colors shadow-sm">
+                  Get access
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </form>
+              <div className="mt-5 pt-4 border-t border-slate-100 space-y-2">
+                {['HIPAA BAA available', 'Custom FHIR integration', 'Direct engineering support'].map(f => (
+                  <div key={f} className="flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center flex-shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    </span>
+                    <span className="font-sans text-[12px] text-slate-500">{f}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+        </motion.div>
       </div>
     </section>
   )

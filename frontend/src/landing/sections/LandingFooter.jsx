@@ -1,81 +1,57 @@
-const COLS = [
-  {
-    heading: 'Product',
-    links: ['Platform', 'Pipeline', 'Evidence', 'FHIR Integration', 'CDS Hooks'],
-  },
-  {
-    heading: 'Developers',
-    links: ['Documentation', 'API Reference', 'SMART on FHIR', 'GitHub', 'Changelog'],
-  },
-  {
-    heading: 'Company',
-    links: ['About', 'Blog', 'Careers', 'Security', 'Contact'],
-  },
-  {
-    heading: 'Legal',
-    links: ['Privacy Policy', 'Terms of Service', 'HIPAA BAA', 'Cookie Policy'],
-  },
+const NAV_LINKS = [
+  { label: 'Pipeline',  href: '#features' },
+  { label: 'Evidence',  href: '#evidence' },
+  { label: 'Workflow',  href: '#workflow' },
+  { label: 'Platform',  href: '#platform' },
+  { label: 'Early Access', href: '#cta' },
 ]
 
 export default function LandingFooter() {
   return (
-    <footer className="bg-[#060E1A] border-t border-white/[0.06] px-6 md:px-14 pt-16 pb-10">
-      <div className="max-w-[1200px] mx-auto">
+    <footer className="bg-[#F8FAFC] border-t border-slate-200 px-6 md:px-14 py-10">
+      <div className="max-w-[1100px] mx-auto">
 
-        {/* Top row */}
-        <div className="grid grid-cols-2 md:grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-10 pb-12 border-b border-white/[0.07]">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
 
           {/* Brand */}
-          <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-7 h-7 rounded-lg bg-teal/20 border border-teal/30 flex items-center justify-center">
-                <span className="font-sans text-[10px] font-extrabold text-teal">CM</span>
-              </div>
-              <span className="font-sans text-[15px] font-bold text-white">ClinicalMed</span>
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg bg-[#0891B2] flex items-center justify-center flex-shrink-0">
+              <span className="font-sans text-[10px] font-extrabold text-white">CM</span>
             </div>
-            <p className="font-sans text-[13px] text-white/35 leading-relaxed max-w-[200px]">
-              AI clinical evidence synthesis. FHIR-native. Built for medicine.
-            </p>
-            <a
-              href="/app"
-              className="inline-block mt-5 font-sans text-[12px] font-semibold text-teal border border-teal/25 rounded-lg px-3.5 py-2 hover:bg-teal/10 transition-colors"
-            >
-              Open platform →
-            </a>
+            <div>
+              <span className="font-sans text-[14px] font-bold text-slate-900">ClinicalMind</span>
+              <p className="font-sans text-[11px] text-slate-400 mt-0.5">AI clinical evidence synthesis · FHIR-native</p>
+            </div>
           </div>
 
-          {COLS.map(col => (
-            <div key={col.heading}>
-              <p className="font-sans text-[11px] font-bold uppercase tracking-[0.09em] text-white/25 mb-4">
-                {col.heading}
-              </p>
-              <ul className="space-y-2.5">
-                {col.links.map(link => (
-                  <li key={link}>
-                    <a
-                      href="#"
-                      className="font-sans text-[13px] text-white/40 hover:text-white/75 transition-colors"
-                    >
-                      {link}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {/* Section links */}
+          <nav className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            {NAV_LINKS.map(l => (
+              <a key={l.label} href={l.href}
+                className="font-sans text-[13px] text-slate-500 hover:text-slate-800 transition-colors">
+                {l.label}
+              </a>
+            ))}
+          </nav>
+
+          {/* CTA */}
+          <a href="/app"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0891B2] hover:bg-[#0E7490] text-white font-sans text-[13px] font-semibold rounded-lg transition-colors shadow-sm flex-shrink-0">
+            Open platform
+          </a>
         </div>
 
-        {/* Bottom row */}
-        <div className="pt-7 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-          <span className="font-sans text-[12px] text-white/20">
-            © {new Date().getFullYear()} ClinicalMed · For research use only
+        {/* Bottom bar */}
+        <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+          <span className="font-sans text-[12px] text-slate-400">
+            © {new Date().getFullYear()} ClinicalMind · For research use only
           </span>
-          <div className="flex items-center gap-6">
-            {['HIPAA', 'SOC 2', 'FHIR R4'].map(badge => (
-              <span key={badge} className="font-sans text-[11px] font-semibold text-white/20 uppercase tracking-wider">{badge}</span>
+          <div className="flex items-center gap-5">
+            {['HIPAA Ready', 'FHIR R4 Native', 'HL7 Compliant'].map(badge => (
+              <span key={badge} className="font-sans text-[11px] text-slate-300 tracking-wide">{badge}</span>
             ))}
           </div>
-          <span className="font-sans text-[12px] text-white/20">
+          <span className="font-sans text-[12px] text-slate-400">
             FHIR® is a registered trademark of HL7
           </span>
         </div>
