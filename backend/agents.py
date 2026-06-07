@@ -17,6 +17,7 @@ from typing import TypedDict, Optional
 
 from langgraph.graph import StateGraph, END
 from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from pubmed import get_clinical_papers
@@ -70,7 +71,15 @@ class ClinicalState(TypedDict):
 
 # ─── LLM ─────────────────────────────────────────────────────────────────────
 
-def get_llm(max_tokens: int = 4096) -> ChatAnthropic:
+def get_llm(max_tokens: int = 8192):
+    google_key = os.getenv("GOOGLE_API_KEY")
+    if google_key:
+        return ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash",
+            google_api_key=google_key,
+            max_output_tokens=max_tokens,
+            temperature=0.1,
+        )
     return ChatAnthropic(
         model="claude-sonnet-4-20250514",
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
@@ -433,7 +442,7 @@ Evidence level guide:
 """
 
 
-async def summarize_single(llm: ChatAnthropic, paper: dict) -> PaperSummary:
+async def summarize_single(llm, paper: dict) -> PaperSummary:
     source = paper.get("source", "PubMed")
     is_trial = paper.get("is_trial", False)
 
@@ -863,7 +872,7 @@ Evidence from {len(state['summaries'])} sources ({sum(1 for s in state['summarie
 
 Generate a comprehensive structured clinical evidence report."""
 
-    llm = get_llm()
+    llm = get_llm(max_tokens=8192)
 
     # Retry up to 3 times with exponential backoff — handles transient API rate
     # limits and occasional malformed JSON responses from the model.
@@ -872,12 +881,21 @@ Generate a comprehensive structured clinical evidence report."""
     for attempt in range(3):
         try:
             if attempt > 0:
-                await asyncio.sleep(2 ** attempt)   # 2s, 4s
+                await asyncio.sleep(4 ** attempt)   # 4s, 16s
             response = await llm.ainvoke([
                 SystemMessage(content=REPORT_SYSTEM),
                 HumanMessage(content=prompt),
             ])
-            report = json.loads(_strip_json(response.content))
+            raw = _strip_json(response.content)
+            # If JSON is truncated, try to close it before parsing
+            try:
+                report = json.loads(raw)
+            except json.JSONDecodeError:
+                import re
+                raw = re.sub(r',\s*$', '', raw.rstrip())
+                if not raw.endswith('}'):
+                    raw += '}'
+                report = json.loads(raw)
             # Merge consistency note if set by contradiction agent
             if state.get("report", {}).get("consistency_note"):
                 report["consistency_note"] = state["report"]["consistency_note"]
@@ -974,12 +992,7 @@ Top recommendations (for context):
 Generate 3 follow-up questions."""
 
     try:
-        llm = ChatAnthropic(
-            model="claude-haiku-4-5-20251001",
-            anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
-            max_tokens=400,
-            temperature=0.3,
-        )
+        llm = get_llm(max_tokens=400)
         response = await llm.ainvoke([
             SystemMessage(content=FOLLOWUP_SYSTEM),
             HumanMessage(content=prompt),

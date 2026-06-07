@@ -795,6 +795,11 @@ async def export_report_pdf(
 
 # ─── Health ───────────────────────────────────────────────────────────────────
 
+@app.get("/config")
+async def api_config():
+    return {"apiUrl": os.getenv("BACKEND_SELF_URL", "")}
+
+
 @app.get("/health")
 async def health(db: AsyncSession = Depends(get_db)):
     checks: dict[str, str] = {}
