@@ -16,7 +16,6 @@ import WorkflowStrip   from './components/WorkflowStrip'
 import SearchHistory   from './components/SearchHistory'
 import PatientDetailPanel from './components/PatientDetailPanel'
 import ComparisonPanel    from './components/ComparisonPanel'
-import CDSHooksDemo       from './components/CDSHooksDemo'
 import PatientRail        from './components/PatientRail'
 import PatientDashboard   from './components/PatientDashboard'
 
@@ -32,13 +31,13 @@ const ALL_AGENTS = ['fhir','pico','search','summarizer','contradiction','drug_in
 
 // ── design tokens ─────────────────────────────────────────────────
 const T = {
-  cream:     '#F7F3EC',
+  cream:     '#F0F4FF',
   white:     '#FFFFFF',
-  navy:      '#0A1628',
-  navyLight: '#1E3A5F',
-  muted:     '#6B7280',
-  border:    '#E5E1D8',
-  borderMid: '#C5BFB3',
+  navy:      '#1E293B',
+  navyLight: '#334155',
+  muted:     '#64748B',
+  border:    '#E2E8F0',
+  borderMid: '#CBD5E1',
   blue:      '#2563EB',
   green:     '#10B981',
   red:       '#EF4444',
@@ -369,41 +368,7 @@ export default function App() {
   if (!user) return <AuthScreen onAuthenticated={setUser} />
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: '#F8FAFC', position: 'relative' }}>
-
-      {/* ── AMBIENT BACKGROUND BLOBS ── */}
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0 }}>
-        <motion.div
-          animate={{ scale: [1, 1.2, 1], x: [0, 30, 0], y: [0, -40, 0] }}
-          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
-          style={{
-            position: 'absolute', top: '-10%', right: '10%',
-            width: 600, height: 600, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(6,182,212,0.12) 0%, rgba(14,116,144,0.06) 50%, transparent 70%)',
-            filter: 'blur(60px)',
-          }}
-        />
-        <motion.div
-          animate={{ scale: [1, 1.15, 1], x: [0, -25, 0], y: [0, 50, 0] }}
-          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut', delay: 6 }}
-          style={{
-            position: 'absolute', bottom: '5%', left: '20%',
-            width: 500, height: 500, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(99,102,241,0.10) 0%, rgba(79,70,229,0.05) 50%, transparent 70%)',
-            filter: 'blur(70px)',
-          }}
-        />
-        <motion.div
-          animate={{ scale: [1, 1.3, 1], x: [0, 20, 0], y: [0, -20, 0] }}
-          transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut', delay: 3 }}
-          style={{
-            position: 'absolute', top: '40%', right: '30%',
-            width: 300, height: 300, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%)',
-            filter: 'blur(50px)',
-          }}
-        />
-      </div>
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: '#F0F4FF' }}>
 
       {/* ── LEFT RAIL ── */}
       <PatientRail
@@ -414,59 +379,43 @@ export default function App() {
           setMainView('dashboard')
         }}
         onNewSearch={() => { handleReset(); setMainView('search') }}
+        mainView={mainView}
+        setMainView={setMainView}
+        user={user}
+        onLogout={handleLogout}
       />
 
       {/* ── MAIN AREA ── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#F0F4FF' }}>
 
         {/* ── TOP BAR ── */}
         <motion.header
           initial={{ y: -10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="h-[62px] flex-shrink-0 flex items-center justify-between px-6 border-b border-slate-100"
-          style={{ backdropFilter: 'blur(16px)', background: 'rgba(255,255,255,0.80)', boxShadow: '0 1px 0 rgba(0,0,0,0.04)' }}
+          className="h-[62px] flex-shrink-0 flex items-center justify-between px-6 border-b border-slate-100 bg-white"
+          style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.04)' }}
         >
-          {/* Brand */}
-          <a href="/" className="flex items-center gap-2.5 group">
-            <motion.div
-              whileHover={{ scale: 1.06, rotate: -2 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-              className="w-8 h-8 rounded-lg bg-[#060E1A] flex items-center justify-center"
-            >
-              <span className="font-sans text-[11px] font-extrabold text-[#67C5D5]">CM</span>
-            </motion.div>
-            <span className="font-sans text-[15px] font-bold text-slate-900 tracking-tight">ClinicalMed</span>
-          </a>
-
-          {/* Nav pills */}
-          <div className="flex items-center gap-1.5 bg-slate-100 rounded-xl p-1">
-            {[
-              { id: 'search',    label: 'Evidence',  icon: Search },
-              { id: 'discharge', label: 'Discharge', icon: Activity },
-            ].map(({ id, label, icon: Icon }) => (
-              <motion.button
-                key={id}
-                type="button"
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setMainView(id)}
-                className={`relative inline-flex items-center gap-2 px-3.5 py-2 rounded-lg font-sans text-[12px] font-semibold transition-colors ${
-                  mainView === id
-                    ? 'text-slate-900'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                {mainView === id && (
-                  <motion.div
-                    layoutId="nav-pill"
-                    className="absolute inset-0 bg-white rounded-lg shadow-sm"
-                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                  />
-                )}
-                <Icon size={13} strokeWidth={2} className="relative z-10" />
-                <span className="relative z-10">{label}</span>
-              </motion.button>
-            ))}
+          {/* Page title */}
+          <div>
+            <AnimatePresence mode="wait">
+              <motion.div key={mainView}
+                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2 }}>
+                <h1 className="font-sans text-[16px] font-bold text-slate-900 leading-none">
+                  {mainView === 'search' ? 'Evidence Search'
+                   : mainView === 'dashboard' ? (selectedPatient ? `${selectedPatient.full_name}` : 'Dashboard')
+                   : mainView === 'discharge' ? 'Discharge'
+                   : 'Reports'}
+                </h1>
+                <p className="font-sans text-[12px] text-slate-400 mt-0.5">
+                  {mainView === 'search' ? '8 AI agents · FHIR R4 · Live SSE'
+                   : mainView === 'dashboard' && selectedPatient ? `MRN ${selectedPatient.mrn || '—'} · FHIR context loaded`
+                   : mainView === 'discharge' ? 'Discharge planning dashboard'
+                   : 'Search history & reports'}
+                </p>
+              </motion.div>
+            </AnimatePresence>
           </div>
 
           {/* Right controls */}
@@ -476,32 +425,17 @@ export default function App() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => setShowHistory(true)}
-              className="inline-flex items-center gap-2 font-sans text-[12px] font-medium text-slate-500 hover:text-slate-800 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              className="inline-flex items-center gap-2 font-sans text-[12px] font-semibold text-slate-500 hover:text-slate-800 px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors"
             >
               <Clock size={13} strokeWidth={2} />
               History
             </motion.button>
 
-            <div className="w-px h-5 bg-slate-200 mx-1" />
-
-            <div className="flex items-center gap-2">
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0E7490] to-[#0EA5E9] flex items-center justify-center text-white font-sans text-[12px] font-bold cursor-default shadow-sm"
-              >
+            <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-sans text-[12px] font-bold">
                 {user.name?.charAt(0).toUpperCase() || 'U'}
-              </motion.div>
-              <span className="font-sans text-[13px] font-medium text-slate-700 hidden sm:inline max-w-[120px] truncate">{user.name}</span>
-              <motion.button
-                type="button"
-                onClick={handleLogout}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                title="Sign out"
-                className="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
-              >
-                <LogOut size={15} strokeWidth={1.75} />
-              </motion.button>
+              </div>
+              <span className="font-sans text-[13px] font-semibold text-slate-700 hidden sm:inline max-w-[120px] truncate">{user.name}</span>
             </div>
           </div>
         </motion.header>
@@ -526,7 +460,7 @@ export default function App() {
             <motion.div
               key="search"
               className="flex-1 overflow-y-auto"
-              style={{ background: 'transparent' }}
+              style={{ background: '#F0F4FF' }}
               {...fadeIn}
             >
               <div className="max-w-[760px] mx-auto px-6 py-10 pb-16">
@@ -578,14 +512,13 @@ export default function App() {
                         <motion.div
                           layout
                           style={{
-                            borderRadius: 16,
+                            borderRadius: 20,
                             overflow: 'hidden',
-                            background: 'rgba(255,255,255,0.85)',
-                            backdropFilter: 'blur(12px)',
-                            border: searchFocused ? '1.5px solid rgba(14,116,144,0.5)' : '1.5px solid rgba(14,116,144,0.15)',
+                            background: '#FFFFFF',
+                            border: searchFocused ? '1.5px solid rgba(37,99,235,0.5)' : '1.5px solid #E2E8F0',
                             boxShadow: searchFocused
-                              ? '0 0 0 3px rgba(6,182,212,0.10), 0 8px 40px rgba(10,22,40,0.10)'
-                              : '0 4px 24px rgba(10,22,40,0.06)',
+                              ? '0 0 0 3px rgba(37,99,235,0.10), 0 8px 40px rgba(30,41,59,0.08)'
+                              : '0 2px 12px rgba(30,41,59,0.06)',
                             transition: 'border-color 0.2s, box-shadow 0.2s',
                           }}
                         >
@@ -666,8 +599,8 @@ export default function App() {
                           <div style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             padding: '10px 18px',
-                            borderTop: '1px solid rgba(14,116,144,0.08)',
-                            background: 'rgba(248,250,252,0.6)',
+                            borderTop: '1px solid #EEF2FF',
+                            background: '#FAFBFF',
                           }}>
                             <motion.button type="button"
                               whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
@@ -692,7 +625,7 @@ export default function App() {
                               disabled={!question.trim() || (compareMode && !questionB.trim()) || isSubmitting}
                               style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                                background: 'linear-gradient(135deg, #0A1628 0%, #0E2A45 100%)',
+                                background: '#2563EB',
                                 color: 'white', fontFamily: 'Inter', fontSize: 13, fontWeight: 600,
                                 padding: '9px 20px', borderRadius: 10, border: 'none', cursor: 'pointer',
                                 opacity: (!question.trim() || (compareMode && !questionB.trim()) || isSubmitting) ? 0.4 : 1,
@@ -719,7 +652,7 @@ export default function App() {
                             style={{
                               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                               padding: '8px 14px', marginBottom: 16, borderRadius: 10,
-                              background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.18)',
+                              background: '#EFF6FF', border: '1px solid #BFDBFE',
                             }}
                             initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -751,12 +684,12 @@ export default function App() {
                                   style={{
                                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                     padding: '11px 14px', textAlign: 'left', cursor: 'pointer',
-                                    background: 'rgba(6,182,212,0.05)', border: '1px solid rgba(6,182,212,0.2)',
+                                    background: 'rgba(37,99,235,0.05)', border: '1px solid rgba(37,99,235,0.15)',
                                     borderRadius: 10, width: '100%',
                                   }}
                                   initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
                                   transition={{ delay: i * 0.06 }}
-                                  whileHover={{ x: 3, background: 'rgba(6,182,212,0.09)' }}>
+                                  whileHover={{ x: 3, background: 'rgba(37,99,235,0.09)' }}>
                                   <span style={{ fontFamily: 'Inter', fontSize: 13, color: '#0E7490', lineHeight: 1.5 }}>{q}</span>
                                   <ChevronRight size={14} style={{ color: '#0E7490', flexShrink: 0 }} />
                                 </motion.button>
@@ -779,13 +712,13 @@ export default function App() {
                                   padding: '12px 14px', textAlign: 'left',
                                   display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8,
                                   cursor: 'pointer', width: '100%',
-                                  background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)',
-                                  border: '1px solid rgba(14,116,144,0.12)', borderRadius: 12,
+                                  background: '#FFFFFF',
+                                  border: '1px solid #E2E8F0', borderRadius: 16,
                                 }}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.32 + i * 0.07 }}
-                                whileHover={{ y: -2, boxShadow: '0 4px 16px rgba(6,182,212,0.12)', borderColor: 'rgba(14,116,144,0.3)' }}>
+                                whileHover={{ y: -2, boxShadow: '0 4px 16px rgba(37,99,235,0.10)', borderColor: '#93C5FD' }}>
                                 <span style={{ fontFamily: 'Inter', fontSize: 12, color: '#334155', lineHeight: 1.5 }}>{q}</span>
                                 <ChevronRight size={13} style={{ color: '#0E7490', flexShrink: 0, marginTop: 2 }} />
                               </motion.button>
@@ -887,8 +820,8 @@ export default function App() {
                             display: 'inline-flex', alignItems: 'center', gap: 6,
                             fontSize: 12, padding: '7px 14px', borderRadius: 9, flexShrink: 0,
                             fontFamily: 'Inter', fontWeight: 600, cursor: 'pointer',
-                            background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(14,116,144,0.2)',
-                            color: '#0E7490', backdropFilter: 'blur(8px)',
+                            background: '#FFFFFF', border: '1px solid #E2E8F0',
+                            color: '#64748B',
                           }}>
                           <X size={13} /> New Search
                         </motion.button>
@@ -1020,11 +953,6 @@ export default function App() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-
-                {/* CDS Hooks */}
-                <div style={{ marginTop: 32, marginBottom: 16 }}>
-                  <CDSHooksDemo />
-                </div>
 
                 {/* Footer */}
                 <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${T.border}` }}>

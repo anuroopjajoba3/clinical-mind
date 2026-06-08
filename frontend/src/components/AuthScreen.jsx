@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Shield, Zap, FileCheck, Eye, EyeOff, ArrowRight, CheckCircle } from 'lucide-react'
 import { authAPI, checkApiHealth, formatApiError } from '../api'
+import AnatomicalBG from './AnatomicalBG'
 
 const FEATURES = [
   { icon: Shield,    text: 'HIPAA-ready infrastructure' },
@@ -60,10 +61,12 @@ export default function AuthScreen({ onAuthenticated }) {
     }`
 
   return (
-    <div className="min-h-screen flex font-sans bg-white">
+    <div className="min-h-screen flex font-sans bg-white relative overflow-hidden">
+      {/* Anatomical illustrations — sit between panel bg and text content */}
+      <AnatomicalBG dark={false} />
 
       {/* ── LEFT PANEL ── */}
-      <div className="hidden lg:flex w-[52%] flex-shrink-0 flex-col justify-between bg-[#F8FAFC] border-r border-slate-100 px-14 py-12">
+      <div className="hidden lg:flex w-[52%] flex-shrink-0 flex-col justify-between border-r border-slate-100 px-14 py-12 relative" style={{ zIndex: 3, background: 'rgba(248,250,252,0.92)' }}>
 
         {/* Logo */}
         <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}
@@ -134,7 +137,7 @@ export default function AuthScreen({ onAuthenticated }) {
       </div>
 
       {/* ── RIGHT PANEL ── */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 bg-white">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 relative" style={{ zIndex: 3, background: 'rgba(255,255,255,0.92)' }}>
 
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center gap-2.5 mb-8 self-start">
