@@ -21,8 +21,10 @@ export default function EvidenceSection() {
             <p className="font-sans text-[11px] font-semibold tracking-[0.14em] uppercase text-[#0891B2] mb-3">
               Evidence synthesis
             </p>
-            <h2 className="font-sans text-[clamp(2rem,4vw,2.75rem)] font-extrabold tracking-[-0.03em] text-slate-900 leading-[1.08] max-w-[520px]">
-              36 million papers, ranked for one patient.
+            <h2 className="text-slate-900 leading-[1.06] max-w-[520px]"
+              style={{ fontFamily: '"Playfair Display", serif', fontSize: 'clamp(2rem,4vw,2.75rem)', fontWeight: 800 }}>
+              36 million papers,{' '}
+              <em style={{ fontStyle: 'italic', color: '#1a56db' }}>ranked for one patient.</em>
             </h2>
           </div>
           <div className="flex items-center gap-6 flex-shrink-0">
@@ -140,6 +142,27 @@ export default function EvidenceSection() {
             </motion.div>
           ))}
         </div>
+
+        {/* Full-width clinical photo callout */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }} transition={{ duration: 0.55, delay: 0.1 }}
+          className="mt-4 rounded-2xl overflow-hidden relative"
+          style={{ height: 260 }}>
+          <img
+            src="https://images.unsplash.com/photo-1530026405186-ed1f139313f3?auto=format&fit=crop&w=1400&h=520&q=80"
+            alt="Clinical research and evidence synthesis"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(8,145,178,0.55) 0%, rgba(15,23,42,0.65) 100%)' }} />
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
+            <p className="font-sans text-[11px] font-bold uppercase tracking-widest text-cyan-200 mb-3">Evidence at scale</p>
+            <p className="font-sans text-[28px] font-extrabold text-white leading-tight max-w-[480px]">
+              36 million indexed papers, searched in real time.
+            </p>
+            <p className="font-sans text-[14px] text-slate-300 mt-3">Not a static training snapshot. Live results from PubMed and ClinicalTrials.gov.</p>
+          </div>
+        </motion.div>
 
       </div>
     </section>

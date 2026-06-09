@@ -23,8 +23,10 @@ export default function CaseStudySection() {
           <p className="font-sans text-[11px] font-semibold tracking-[0.14em] uppercase text-[#0891B2] mb-3">
             Case study
           </p>
-          <h2 className="font-sans text-[clamp(2rem,4vw,2.75rem)] font-extrabold tracking-[-0.03em] text-slate-900 leading-[1.08] max-w-[480px]">
-            Evidence synthesis at clinical scale.
+          <h2 className="text-slate-900 leading-[1.06] max-w-[480px]"
+            style={{ fontFamily: '"Playfair Display", serif', fontSize: 'clamp(2rem,4vw,2.75rem)', fontWeight: 800 }}>
+            Evidence synthesis{' '}
+            <em style={{ fontStyle: 'italic', color: '#1a56db' }}>at clinical scale.</em>
           </h2>
         </motion.div>
 
@@ -32,7 +34,7 @@ export default function CaseStudySection() {
         <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.06 }}
           className="grid grid-cols-3 gap-4 mb-8">
-          {STATS.map((s, i) => (
+          {STATS.map((s) => (
             <div key={s.label} className="rounded-2xl border border-slate-200 bg-white p-6"
               style={{ boxShadow: '0 1px 4px rgba(15,23,42,0.04)' }}>
               <p className="font-sans text-[38px] font-extrabold text-slate-900 leading-none">{s.value}</p>
@@ -50,8 +52,18 @@ export default function CaseStudySection() {
           <div className="grid lg:grid-cols-[1fr_1.2fr]">
 
             {/* Left: quote / narrative */}
-            <div className="p-8 md:p-10 border-b lg:border-b-0 lg:border-r border-slate-100 flex flex-col justify-between gap-8 bg-[#F8FAFC]">
-              <div>
+            <div className="relative p-8 md:p-10 border-b lg:border-b-0 lg:border-r border-slate-100 flex flex-col justify-between gap-8 overflow-hidden">
+              {/* Background clinical photo */}
+              <div className="absolute inset-0">
+                <img
+                  src="https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=700&q=80"
+                  alt="Clinical team"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(248,250,252,0.92) 0%, rgba(248,250,252,0.97) 100%)' }} />
+              </div>
+
+              <div className="relative z-10">
                 <span className="inline-block font-sans text-[10px] font-bold tracking-[0.12em] uppercase text-[#0891B2] bg-[#ECFEFF] border border-[#A5F3FC] rounded-full px-3 py-1 mb-5">
                   Internal medicine team
                 </span>
@@ -61,9 +73,15 @@ export default function CaseStudySection() {
                   with the report automatically in the chart."
                 </p>
               </div>
-              <div className="flex items-center gap-3 pt-4 border-t border-slate-200">
-                <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">
-                  <span className="font-sans text-[12px] font-bold text-slate-600">DC</span>
+
+              <div className="relative z-10 flex items-center gap-3 pt-4 border-t border-slate-200">
+                {/* Real doctor photo */}
+                <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 border-2 border-white" style={{ boxShadow: '0 2px 8px rgba(15,23,42,0.15)' }}>
+                  <img
+                    src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=80&h=80&q=80"
+                    alt="Dr. Chen"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div>
                   <p className="font-sans text-[13px] font-bold text-slate-800">Dr. Chen</p>

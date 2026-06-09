@@ -134,8 +134,10 @@ export default function FeatureSection() {
           <p className="font-sans text-[11px] font-semibold tracking-[0.14em] uppercase text-[#0891B2] mb-3">
             LangGraph clinical pipeline
           </p>
-          <h2 className="font-sans text-[clamp(2rem,4vw,2.75rem)] font-extrabold tracking-[-0.03em] text-slate-900 leading-[1.08] max-w-[540px]">
-            Every run follows the same deterministic path.
+          <h2 className="text-slate-900 leading-[1.06] max-w-[540px]"
+            style={{ fontFamily: '"Playfair Display", serif', fontSize: 'clamp(2rem,4vw,2.75rem)', fontWeight: 800 }}>
+            Every run follows the{' '}
+            <em style={{ fontStyle: 'italic', color: '#1a56db' }}>same deterministic path.</em>
           </h2>
           <p className="mt-4 font-sans text-[15px] text-slate-500 max-w-[480px] leading-relaxed">
             Eight specialized agents. No hallucination risk from skipped steps. Full audit trail on every evidence report.
@@ -181,6 +183,28 @@ export default function FeatureSection() {
                 </motion.div>
               )
             })}
+
+            {/* Full-width photo card */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.32 }}
+              className="sm:col-span-2 rounded-2xl overflow-hidden relative"
+              style={{ height: 220, boxShadow: '0 2px 12px rgba(15,23,42,0.07)' }}>
+              <img
+                src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1200&h=440&q=80"
+                alt="Physicians using ClinicalMind at point of care"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(15,23,42,0.70) 0%, rgba(15,23,42,0.20) 55%, transparent 100%)' }} />
+              <div className="absolute inset-0 flex items-center px-8">
+                <div className="max-w-[380px]">
+                  <p className="font-sans text-[10px] font-bold uppercase tracking-widest text-blue-300 mb-2">Real-world deployment</p>
+                  <p className="font-sans text-[18px] font-bold text-white leading-snug">
+                    Built for the point of care, not a conference demo.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 import LandingNav from './sections/LandingNav'
 import HeroSection from './sections/HeroSection'
+import PhotoStrip from './sections/PhotoStrip'
 import TrustedBySection from './sections/TrustedBySection'
 import PipelineStrip from './sections/PipelineStrip'
 import FeatureSection from './sections/FeatureSection'
@@ -17,6 +18,7 @@ export default function LandingPage() {
       <LandingNav />
       <main>
         <HeroSection />
+        <PhotoStrip />
         <TrustedBySection />
         <PipelineStrip />
         <FeatureSection />

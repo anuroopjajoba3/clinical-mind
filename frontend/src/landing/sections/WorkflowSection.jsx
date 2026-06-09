@@ -86,8 +86,10 @@ export default function WorkflowSection() {
           <p className="font-sans text-[11px] font-semibold tracking-[0.14em] uppercase text-[#0891B2] mb-3">
             How it works
           </p>
-          <h2 className="font-sans text-[clamp(2rem,4vw,2.75rem)] font-extrabold tracking-[-0.03em] text-slate-900 leading-[1.08] max-w-[480px]">
-            Six steps from EMR to written-back synthesis.
+          <h2 className="text-slate-900 leading-[1.06] max-w-[480px]"
+            style={{ fontFamily: '"Playfair Display", serif', fontSize: 'clamp(2rem,4vw,2.75rem)', fontWeight: 800 }}>
+            From EMR to{' '}
+            <em style={{ fontStyle: 'italic', color: '#1a56db' }}>written-back synthesis.</em>
           </h2>
         </motion.div>
 

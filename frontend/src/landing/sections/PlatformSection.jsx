@@ -26,8 +26,10 @@ export default function PlatformSection() {
             <p className="font-sans text-[11px] font-semibold tracking-[0.14em] uppercase text-[#0891B2] mb-3">
               Backend platform
             </p>
-            <h2 className="font-sans text-[clamp(2rem,4vw,2.75rem)] font-extrabold tracking-[-0.03em] text-slate-900 leading-[1.08] max-w-[440px]">
-              Every layer wired end-to-end.
+            <h2 className="text-slate-900 leading-[1.06] max-w-[440px]"
+              style={{ fontFamily: '"Playfair Display", serif', fontSize: 'clamp(2rem,4vw,2.75rem)', fontWeight: 800 }}>
+              Every layer{' '}
+              <em style={{ fontStyle: 'italic', color: '#1a56db' }}>wired end-to-end.</em>
             </h2>
             <p className="mt-3 font-sans text-[15px] text-slate-500 max-w-[400px] leading-relaxed">
               No glue code, no manual orchestration. One repo, production-ready.

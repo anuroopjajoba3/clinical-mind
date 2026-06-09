@@ -1,288 +1,202 @@
 import { motion } from 'framer-motion'
-import { ArrowRight, CheckCircle, Loader2, Circle } from 'lucide-react'
-import { useState, useEffect } from 'react'
-
-const PIPELINE = [
-  { label: 'FHIR Context',     desc: 'Patient EMR loaded' },
-  { label: 'PICO Extraction',  desc: 'Question structured' },
-  { label: 'Evidence Search',  desc: 'PubMed + Trials' },
-  { label: 'Summarizer',       desc: '14 abstracts graded' },
-  { label: 'Contradiction',    desc: 'Conflicts checked' },
-  { label: 'Drug Interaction', desc: 'Medications verified' },
-  { label: 'Synthesize',       desc: 'Report generating...' },
-  { label: 'Follow-up',        desc: 'Evidence gaps' },
-]
-
-const SOURCES = [
-  { title: 'EMPEROR-Reduced', journal: 'NEJM 2020', grade: '1A', confidence: 94 },
-  { title: 'DAPA-CKD Trial',  journal: 'NEJM 2020', grade: '1A', confidence: 91 },
-  { title: 'CREDENCE Subgroup', journal: 'Lancet 2019', grade: '2B', confidence: 72 },
-]
-
-function LivePipelineMockup() {
-  const [step, setStep] = useState(0)
-  useEffect(() => {
-    if (step < PIPELINE.length) {
-      const t = setTimeout(() => setStep(s => s + 1), step === 6 ? 1600 : 520)
-      return () => clearTimeout(t)
-    } else {
-      const t = setTimeout(() => setStep(0), 2200)
-      return () => clearTimeout(t)
-    }
-  }, [step])
-
-  return (
-    <div className="flex h-full">
-      {/* Left panel — pipeline */}
-      <div className="w-[44%] border-r border-slate-100 p-5 flex flex-col gap-3">
-        <div className="mb-1">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Clinical Query</p>
-          <p className="text-[12px] font-semibold text-slate-700 mt-1 leading-snug">
-            SGLT2 inhibitors in HFrEF + CKD Stage 3
-          </p>
-        </div>
-        <div className="h-px bg-slate-100" />
-        <div className="space-y-2 flex-1">
-          {PIPELINE.map((agent, i) => {
-            const isDone = i < step, isRunning = i === step, isIdle = i > step
-            return (
-              <motion.div key={agent.label}
-                animate={{ opacity: isIdle ? 0.35 : 1 }}
-                transition={{ duration: 0.2 }}
-                className="flex items-center gap-2">
-                <span className="flex-shrink-0 w-3.5">
-                  {isDone && <CheckCircle size={12} className="text-emerald-500" strokeWidth={2.5} />}
-                  {isRunning && (
-                    <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }}>
-                      <Loader2 size={12} className="text-[#0891B2]" strokeWidth={2.5} />
-                    </motion.span>
-                  )}
-                  {isIdle && <Circle size={12} className="text-slate-200" strokeWidth={1.5} />}
-                </span>
-                <span className={`text-[10px] font-medium flex-1 ${isDone ? 'text-emerald-600' : isRunning ? 'text-slate-800' : 'text-slate-300'}`}>
-                  {agent.label}
-                </span>
-                {(isDone || isRunning) && (
-                  <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                    className="text-[9px] text-slate-400 flex-shrink-0">{agent.desc}</motion.span>
-                )}
-              </motion.div>
-            )
-          })}
-        </div>
-        {step >= PIPELINE.length && (
-          <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-            className="mt-2 rounded-lg bg-[#ECFEFF] border border-[#A5F3FC] p-3">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-[#0891B2]">Complete</p>
-            <p className="text-[11px] font-semibold text-slate-700 mt-0.5">Level 1A · 94% confidence</p>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Right panel — evidence rows */}
-      <div className="flex-1 p-5 flex flex-col gap-3">
-        <div className="mb-1">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Evidence Results</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">Ranked for Sarah K. · MRN-00421</p>
-        </div>
-        <div className="h-px bg-slate-100" />
-
-        {/* Patient context strip */}
-        <div className="rounded-lg border border-slate-100 bg-slate-50 p-2.5 text-[10px]">
-          <div className="flex gap-3 flex-wrap">
-            {[['Conditions','HFrEF · CKD3'], ['Meds','Empagliflozin'], ['eGFR','41 mL/min']].map(([k,v]) => (
-              <div key={k}>
-                <span className="text-slate-400">{k}: </span>
-                <span className="text-slate-700 font-medium">{v}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Evidence table */}
-        <div className="flex-1 space-y-1.5">
-          {SOURCES.map((src, i) => (
-            <motion.div key={src.title}
-              initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 + i * 0.12, duration: 0.35 }}
-              className="rounded-lg border border-slate-100 bg-white p-2.5">
-              <div className="flex items-center justify-between gap-2 mb-1.5">
-                <div>
-                  <p className="text-[11px] font-semibold text-slate-700 leading-none">{src.title}</p>
-                  <p className="text-[9px] text-slate-400 mt-0.5">{src.journal}</p>
-                </div>
-                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                  src.grade === '1A'
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                    : 'bg-amber-50 text-amber-700 border border-amber-200'
-                }`}>
-                  {src.grade}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-1 rounded-full bg-slate-100 overflow-hidden">
-                  <motion.div className="h-full rounded-full bg-[#0891B2]"
-                    initial={{ width: 0 }} animate={{ width: `${src.confidence}%` }}
-                    transition={{ delay: 0.5 + i * 0.12, duration: 0.7, ease: 'easeOut' }} />
-                </div>
-                <span className="text-[9px] text-slate-500 flex-shrink-0">{src.confidence}%</span>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* FHIR write-back badge */}
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
-          <p className="text-[10px] font-semibold text-emerald-700">DocumentReference written to EMR</p>
-        </div>
-      </div>
-    </div>
-  )
-}
+import { ArrowRight } from 'lucide-react'
 
 export default function HeroSection() {
   return (
     <section className="relative bg-white overflow-hidden" style={{ minHeight: '100svh' }}>
 
-      {/* Subtle dot grid */}
+      {/* Subtle dot grid — left side only */}
       <div className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage: 'radial-gradient(circle, #CBD5E1 1px, transparent 1px)',
-          backgroundSize: '28px 28px',
-          opacity: 0.5,
-          maskImage: 'radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 90%)',
+          backgroundSize: '32px 32px',
+          opacity: 0.28,
+          maskImage: 'radial-gradient(ellipse 55% 80% at 15% 50%, black 10%, transparent 75%)',
         }} />
 
-      <div className="relative z-10 max-w-[1100px] mx-auto px-6 md:px-12 pt-32 pb-16 flex flex-col items-center text-center">
+      <div className="relative z-10 max-w-[1280px] mx-auto px-6 md:px-14 flex items-center"
+        style={{ minHeight: '100svh', paddingTop: 96, paddingBottom: 80 }}>
+        <div className="grid lg:grid-cols-[1fr_1.12fr] gap-12 lg:gap-16 items-center w-full">
 
-        {/* Eyebrow */}
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-          <span className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#0891B2] tracking-[0.12em] uppercase bg-[#ECFEFF] border border-[#A5F3FC] px-3.5 py-1.5 rounded-full">
-            <motion.span className="w-1.5 h-1.5 rounded-full bg-[#06B6D4]"
-              animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.8, repeat: Infinity }} />
-            AI Clinical Evidence Platform · FHIR R4
-          </span>
-        </motion.div>
+          {/* Left: text */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}>
 
-        {/* Headline */}
-        <motion.h1
-          className="mt-7 font-sans font-black text-slate-900 tracking-[-0.04em] leading-[1.04]"
-          style={{ fontSize: 'clamp(2.8rem, 6vw, 5rem)' }}
-          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.65, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}>
-          Clinical intelligence<br />
-          <span className="text-[#0891B2]">built for medicine.</span>
-        </motion.h1>
+            <motion.p
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              transition={{ delay: 0.1, duration: 0.5 }}
+              className="font-sans text-[11px] font-bold tracking-[0.18em] uppercase text-[#1a56db] mb-8">
+              Clinical Evidence Intelligence
+            </motion.p>
 
-        {/* Subtitle */}
-        <motion.p
-          className="mt-6 font-sans text-[17px] text-slate-500 leading-relaxed max-w-[520px]"
-          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.22 }}>
-          Eight AI agents search 36 million papers, grade evidence, check drug interactions,
-          and write structured reports back to your EMR — in under 4 minutes.
-        </motion.p>
+            <h1 className="text-slate-900 leading-[1.06] tracking-[-0.02em] mb-7"
+              style={{ fontFamily: '"Playfair Display", serif', fontSize: 'clamp(2.6rem, 5vw, 4.2rem)', fontWeight: 800 }}>
+              Clinical intelligence,
+              <br />
+              <em style={{ fontStyle: 'italic', color: '#1a56db', fontWeight: 700 }}>
+                built for medicine.
+              </em>
+            </h1>
 
-        {/* CTAs */}
-        <motion.div className="mt-8 flex flex-col sm:flex-row gap-3 items-center"
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.34 }}>
-          <a href="/app"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#0891B2] hover:bg-[#0E7490] text-white font-sans text-[14px] font-semibold rounded-lg transition-colors shadow-sm">
-            Open platform
-            <ArrowRight className="w-4 h-4" />
-          </a>
-          <a href="#features"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-700 font-sans text-[14px] font-semibold rounded-lg hover:bg-slate-50 transition-colors">
-            View pipeline
-          </a>
-        </motion.div>
+            <p className="font-sans text-[17px] text-slate-500 leading-[1.7] max-w-[460px] mb-10">
+              Eight AI agents search 36 million papers, grade evidence, check
+              drug interactions, and write structured reports back to your EMR —
+              in under 4 minutes.
+            </p>
 
-        {/* Trust line */}
-        <motion.div className="mt-6 flex items-center gap-6 flex-wrap justify-center"
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5, duration: 0.5 }}>
-          {['FHIR R4 Native', 'LangGraph Agents', 'HIPAA Ready', 'EMR Write-back'].map((t, i) => (
-            <span key={t} className="flex items-center gap-1.5 font-sans text-[12px] text-slate-400">
-              <span className="w-1 h-1 rounded-full bg-slate-300" />
-              {t}
-            </span>
-          ))}
-        </motion.div>
-
-        {/* Dashboard mockup card */}
-        <motion.div
-          className="mt-14 w-full rounded-2xl border border-slate-200 overflow-hidden bg-white"
-          style={{ boxShadow: '0 8px 40px rgba(15,23,42,0.10), 0 2px 8px rgba(15,23,42,0.05)' }}
-          initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}>
-
-          {/* Window chrome */}
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-[#FAFAFA]">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]" />
-            <span className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]" />
-            <span className="w-2.5 h-2.5 rounded-full bg-[#28C840]" />
-            <div className="ml-4 flex-1 h-5 rounded-md bg-slate-100 flex items-center px-2.5">
-              <span className="font-sans text-[10px] text-slate-400">clinicalmind.ai/app</span>
+            <div className="flex flex-col sm:flex-row gap-3 items-start mb-10">
+              <a href="#cta"
+                className="px-7 py-3.5 rounded-full bg-[#1a56db] hover:bg-[#1648c2] text-white font-sans text-[14px] font-semibold transition-colors shadow-sm">
+                Request access
+              </a>
+              <a href="#features"
+                className="inline-flex items-center gap-1.5 px-5 py-3.5 font-sans text-[14px] font-medium text-slate-600 hover:text-slate-900 transition-colors">
+                How it works <ArrowRight className="w-3.5 h-3.5" />
+              </a>
             </div>
-          </div>
 
-          {/* App layout */}
-          <div className="flex" style={{ height: '380px' }}>
-            {/* Sidebar */}
-            <div className="w-44 border-r border-slate-100 flex flex-col p-3 gap-1 flex-shrink-0">
-              <div className="flex items-center gap-2 px-2 py-1.5 mb-2">
-                <div className="w-6 h-6 rounded bg-[#0891B2] flex items-center justify-center">
-                  <span className="text-white font-bold text-[9px]">CM</span>
-                </div>
-                <span className="font-semibold text-[11px] text-slate-800">ClinicalMind</span>
-              </div>
-              {[
-                { label: 'Dashboard', active: false },
-                { label: 'Evidence Run', active: true },
-                { label: 'Patients', active: false },
-                { label: 'Reports', active: false },
-                { label: 'FHIR Sync', active: false },
-              ].map(({ label, active }) => (
-                <div key={label} className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] font-medium ${active ? 'bg-[#ECFEFF] text-[#0891B2]' : 'text-slate-500 hover:bg-slate-50'}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${active ? 'bg-[#0891B2]' : 'bg-transparent'}`} />
-                  {label}
-                </div>
+            <div className="flex items-center gap-6 flex-wrap">
+              {['FHIR R4 Native', 'LangGraph · 8 Agents', 'HIPAA Ready', 'EMR Write-back'].map(t => (
+                <span key={t} className="font-sans text-[12px] text-slate-400 flex items-center gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-slate-300" />
+                  {t}
+                </span>
               ))}
-              <div className="mt-auto border-t border-slate-100 pt-2 px-2 flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[9px] font-bold text-slate-600">DC</div>
-                <div>
-                  <p className="text-[10px] font-semibold text-slate-700">Dr. Chen</p>
-                  <p className="text-[9px] text-slate-400">Internal Med.</p>
-                </div>
-              </div>
+            </div>
+          </motion.div>
+
+          {/* Right: photo + floating cards */}
+          <motion.div
+            initial={{ opacity: 0, x: 36 }} animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.85, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            className="relative hidden lg:block">
+
+            {/* Main photo */}
+            <div className="relative rounded-[2rem] overflow-hidden" style={{ height: 620 }}>
+              <img
+                src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=900&q=80"
+                alt="Clinical professional reviewing evidence"
+                className="w-full h-full object-cover"
+              />
+              {/* Subtle blue wash on top-right */}
+              <div className="absolute inset-0" style={{
+                background: 'linear-gradient(135deg, rgba(26,86,219,0.07) 0%, transparent 55%, rgba(15,23,42,0.18) 100%)'
+              }} />
             </div>
 
-            {/* Main content */}
-            <div className="flex-1 flex flex-col min-w-0">
-              {/* Header bar */}
-              <div className="border-b border-slate-100 px-5 py-3 flex items-center justify-between">
+            {/* Card: FHIR loaded — top left, overlaps photo edge */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.0, duration: 0.5 }}
+              className="absolute -left-12 top-12">
+              <motion.div
+                animate={{ y: [0, -8, 0] }}
+                transition={{ duration: 4.8, repeat: Infinity, ease: 'easeInOut' }}
+                className="bg-white rounded-2xl px-4 py-3 flex items-center gap-3"
+                style={{ boxShadow: '0 8px 40px rgba(15,23,42,0.13)', border: '1px solid #F1F5F9', minWidth: 240 }}>
+                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                  <span className="text-emerald-600 text-[13px] font-bold">✓</span>
+                </div>
                 <div>
-                  <p className="text-[13px] font-semibold text-slate-800">Evidence Run</p>
-                  <p className="text-[10px] text-slate-400">Patient: Sarah K. · MRN-00421</p>
+                  <p className="font-sans text-[12px] font-bold text-slate-800">FHIR context loaded</p>
+                  <p className="font-sans text-[11px] text-slate-400">Sarah K. · MRN-00421 · HFrEF</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="flex items-center gap-1.5 text-[10px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-full">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Live
-                  </span>
+              </motion.div>
+            </motion.div>
+
+            {/* Card: 8 agents running — top right */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.15, duration: 0.5 }}
+              className="absolute -right-6 top-14">
+              <motion.div
+                animate={{ y: [0, 9, 0] }}
+                transition={{ duration: 5.2, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
+                className="bg-[#1a56db] rounded-2xl px-4 py-3"
+                style={{ boxShadow: '0 8px 32px rgba(26,86,219,0.38)' }}>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-300 animate-pulse" />
+                  <p className="font-sans text-[12px] font-bold text-white">8 agents running</p>
                 </div>
-              </div>
+                <p className="font-sans text-[11px] text-blue-200">PubMed · ClinicalTrials · Synthesis</p>
+              </motion.div>
+            </motion.div>
 
-              {/* Content */}
-              <div className="flex-1 overflow-hidden">
-                <LivePipelineMockup />
-              </div>
-            </div>
-          </div>
-        </motion.div>
+            {/* Card: Drug interaction — bottom left */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.3, duration: 0.5 }}
+              className="absolute -left-12 bottom-24">
+              <motion.div
+                animate={{ y: [0, 8, 0] }}
+                transition={{ duration: 4.2, repeat: Infinity, ease: 'easeInOut', delay: 1.1 }}
+                className="bg-white rounded-2xl px-4 py-3 flex items-center gap-3"
+                style={{ boxShadow: '0 8px 40px rgba(15,23,42,0.13)', border: '1px solid #F1F5F9', minWidth: 258 }}>
+                <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0">
+                  <span className="text-amber-500 text-[14px]">⚠</span>
+                </div>
+                <div>
+                  <p className="font-sans text-[12px] font-bold text-slate-800">Drug interaction flagged</p>
+                  <p className="font-sans text-[11px] text-slate-400">Clarithromycin + Atorvastatin · Major</p>
+                </div>
+              </motion.div>
+            </motion.div>
 
+            {/* Card: Level 1A — right middle */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.45, duration: 0.5 }}
+              className="absolute -right-8" style={{ top: '42%' }}>
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut', delay: 0.9 }}
+                className="bg-white rounded-2xl px-4 py-3 flex items-center gap-3"
+                style={{ boxShadow: '0 8px 40px rgba(15,23,42,0.13)', border: '1px solid #F1F5F9' }}>
+                <div className="w-8 h-8 rounded-lg bg-[#1a56db] flex items-center justify-center flex-shrink-0">
+                  <span className="font-sans text-[10px] font-extrabold text-white">1A</span>
+                </div>
+                <div>
+                  <p className="font-sans text-[12px] font-bold text-slate-800">Level 1A · 94% confidence</p>
+                  <p className="font-sans text-[11px] text-slate-400">EMPEROR-Reduced · NEJM 2020</p>
+                </div>
+              </motion.div>
+            </motion.div>
+
+            {/* Card: Written to EMR — bottom right (on photo) */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.6, duration: 0.5 }}
+              className="absolute right-8 bottom-10">
+              <motion.div
+                animate={{ y: [0, -7, 0] }}
+                transition={{ duration: 4.6, repeat: Infinity, ease: 'easeInOut', delay: 1.6 }}
+                className="bg-white rounded-2xl px-4 py-3 flex items-center gap-3"
+                style={{ boxShadow: '0 8px 40px rgba(15,23,42,0.13)', border: '1px solid #F1F5F9', minWidth: 224 }}>
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                  <span className="text-[14px]">📄</span>
+                </div>
+                <div>
+                  <p className="font-sans text-[12px] font-bold text-slate-800">Written to EMR</p>
+                  <p className="font-sans text-[11px] text-slate-400">DocumentReference · HAPI FHIR R4</p>
+                </div>
+              </motion.div>
+            </motion.div>
+
+          </motion.div>
+        </div>
       </div>
+
+      {/* Scroll cue */}
+      <motion.div
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 lg:left-[28%]"
+        animate={{ y: [0, 8, 0] }}
+        transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}>
+        <div className="w-5 h-8 rounded-full border-2 border-slate-200 flex items-start justify-center pt-1.5">
+          <div className="w-1 h-2 rounded-full bg-slate-300" />
+        </div>
+      </motion.div>
+
     </section>
   )
 }
