@@ -10,9 +10,9 @@ const FEATURES = [
   { icon: Zap,       text: 'Real-time evidence synthesis' },
 ]
 const STATS = [
-  { value: '36M+',  label: 'PubMed papers indexed' },
+  { value: '35M+',  label: 'PubMed papers indexed' },
   { value: '8',     label: 'AI agents per run' },
-  { value: '<4 min', label: 'Full synthesis time' },
+  { value: '~60 sec', label: 'Full synthesis time' },
 ]
 
 export default function AuthScreen({ onAuthenticated }) {
@@ -93,7 +93,7 @@ export default function AuthScreen({ onAuthenticated }) {
               <span className="text-[#0891B2]">built for medicine.</span>
             </h1>
             <p className="font-sans text-[14px] text-slate-500 leading-relaxed max-w-[340px]">
-              Eight AI agents connect live FHIR patient context, investigate 36 million papers,
+              Eight AI agents connect live FHIR patient context, investigate 35 million papers,
               surface contradictions, and synthesize evidence-graded reports written back to the EMR.
             </p>
           </motion.div>

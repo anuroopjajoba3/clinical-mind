@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 
 const ITEMS = [
-  'FHIR R4 Native', 'HIPAA Ready', '36M+ PubMed', '8 Orchestrated Agents', 'LangGraph Pipeline', 'Real-Time SSE',
+  'FHIR R4 Native', 'HIPAA Ready', '35M+ PubMed', '8 Orchestrated Agents', 'LangGraph Pipeline', 'Real-Time SSE',
 ]
 
 export default function TrustStrip() {

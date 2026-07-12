@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
+import { motion, AnimatePresence, type MotionProps } from 'framer-motion'
 import {
   LogOut, X, AlertTriangle, Clock, Search, BarChart3, Brain,
   ChevronRight, FileText, Zap, ArrowRight, RefreshCw, CheckCheck,
@@ -18,6 +18,60 @@ import PatientDetailPanel from './components/PatientDetailPanel'
 import ComparisonPanel    from './components/ComparisonPanel'
 import PatientRail        from './components/PatientRail'
 import PatientDashboard   from './components/PatientDashboard'
+
+
+// ── types ──────────────────────────────────────────────────────────
+type MainView = 'search' | 'dashboard' | 'discharge' | 'reports'
+
+interface User { email: string; name: string }
+
+interface SessionEntry { question: string; answer: string }
+
+interface Patient {
+  fhir_id: string
+  full_name?: string
+  birth_date?: string
+  gender?: string
+  mrn?: string
+  active_conditions?: string[]
+  allergies?: string[]
+  risk?: { level?: string; flags?: string[] }
+  [key: string]: any
+}
+
+interface Report {
+  clinical_bottom_line?: string
+  summary?: string
+  recommendations?: any[]
+  drug_interactions?: any[]
+  followup_questions?: string[]
+  sources_index?: Record<string, any>
+  [key: string]: any
+}
+
+interface JobStatus {
+  job_id?: string
+  status?: string
+  question?: string
+  agent_status?: Record<string, string>
+  pico?: Record<string, string> | null
+  summaries?: any[]
+  contradictions?: any[]
+  report?: Report | null
+  error?: string | null
+  [key: string]: any
+}
+
+interface CompareStatus {
+  status?: string
+  compare_id?: string
+  question_a?: string
+  question_b?: string
+  agent_status_a?: Record<string, string>
+  agent_status_b?: Record<string, string>
+  error?: string
+  [key: string]: any
+}
 
 // ── constants ──────────────────────────────────────────────────────
 const EXAMPLE_QUESTIONS = [
@@ -45,13 +99,13 @@ const T = {
 }
 
 // ── motion presets ─────────────────────────────────────────────────
-const fadeUp = {
+const fadeUp: MotionProps = {
   initial:    { opacity: 0, y: 14 },
   animate:    { opacity: 1, y: 0 },
   exit:       { opacity: 0, y: -8 },
   transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
 }
-const fadeIn = {
+const fadeIn: MotionProps = {
   initial:    { opacity: 0 },
   animate:    { opacity: 1 },
   exit:       { opacity: 0 },
@@ -177,26 +231,26 @@ function ErrorBanner({ msg }) {
 // ── main app ───────────────────────────────────────────────────────
 export default function App() {
   const [question, setQuestion]               = useState('')
-  const [fhirPatientId, setFhirPatientId]     = useState(null)
-  const [selectedPatient, setSelectedPatient] = useState(null)
-  const [jobStatus, setJobStatus]             = useState(null)
+  const [fhirPatientId, setFhirPatientId]     = useState<string | null>(null)
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
+  const [jobStatus, setJobStatus]             = useState<JobStatus | null>(null)
   const [isSubmitting, setIsSubmitting]       = useState(false)
-  const [error, setError]                     = useState(null)
-  const [user, setUser]                       = useState(null)
+  const [error, setError]                     = useState<string | null>(null)
+  const [user, setUser]                       = useState<User | null>(null)
   const [authReady, setAuthReady]             = useState(false)
   const [showHistory, setShowHistory]         = useState(false)
-  const [detailPatientId, setDetailPatientId] = useState(null)
-  const [sessionMemory, setSessionMemory]     = useState({})
-  const [highlightedSource, setHighlightedSource] = useState(null)
-  const highlightTimerRef = useRef(null)
-  const streamRef    = useRef(null)
-  const pollRef      = useRef(null)
-  const searchBarRef = useRef(null)
+  const [detailPatientId, setDetailPatientId] = useState<string | null>(null)
+  const [sessionMemory, setSessionMemory]     = useState<Record<string, SessionEntry[]>>({})
+  const [highlightedSource, setHighlightedSource] = useState<number | null>(null)
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const streamRef    = useRef<EventSource | null>(null)
+  const pollRef      = useRef<ReturnType<typeof setInterval> | null>(null)
+  const searchBarRef = useRef<HTMLTextAreaElement | null>(null)
   const [compareMode, setCompareMode]     = useState(false)
   const [questionB, setQuestionB]         = useState('')
-  const [compareStatus, setCompareStatus] = useState(null)
-  const comparePollerRef = useRef(null)
-  const [mainView, setMainView] = useState('search')
+  const [compareStatus, setCompareStatus] = useState<CompareStatus | null>(null)
+  const comparePollerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [mainView, setMainView] = useState<MainView>('search')
   const [searchFocused, setSearchFocused] = useState(false)
 
   useEffect(() => {
@@ -219,7 +273,7 @@ export default function App() {
     if (pollRef.current)   { clearInterval(pollRef.current); pollRef.current = null }
   }
 
-  const handleJobData = useCallback((data) => {
+  const handleJobData = useCallback((data: JobStatus) => {
     setJobStatus(prev => {
       const next = prev ? { ...prev, ...data } : data
       if (data.status === 'complete' && data.report && Object.keys(data.report).length > 0) {
@@ -240,7 +294,7 @@ export default function App() {
     }
   }, [fhirPatientId])
 
-  const handleCiteClick = (index) => {
+  const handleCiteClick = (index: number) => {
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
     setHighlightedSource(index)
     const el = document.getElementById(`source-${index}`)
@@ -248,7 +302,7 @@ export default function App() {
     highlightTimerRef.current = setTimeout(() => setHighlightedSource(null), 2500)
   }
 
-  const handleFollowupClick = (q) => {
+  const handleFollowupClick = (q: string) => {
     setQuestion(q)
     setTimeout(() => {
       searchBarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -284,7 +338,7 @@ export default function App() {
     }
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault()
     if (!question.trim() || isSubmitting) return
     setError(null); setJobStatus(null); setIsSubmitting(true); stopStream()
@@ -317,16 +371,16 @@ export default function App() {
     }
   }
 
-  const handlePatientSelected = (patient) => {
+  const handlePatientSelected = (patient: Patient | null) => {
     setSelectedPatient(patient)
     setFhirPatientId(patient?.fhir_id ?? null)
   }
 
-  const smartSuggestions = (() => {
+  const smartSuggestions: string[] = (() => {
     if (!selectedPatient?.risk?.flags?.length) return []
     const flags = selectedPatient.risk.flags
     const conds = selectedPatient.active_conditions || []
-    const suggestions = []
+    const suggestions: string[] = []
     const egfrFlag = flags.find(f => /eGFR/i.test(f))
     if (egfrFlag) {
       const match = egfrFlag.match(/eGFR\s*([\d.]+)/i)
@@ -361,7 +415,7 @@ export default function App() {
     setFhirPatientId(null)
     setMainView('search')
   }
-  const loadHistory   = async (job_id) => {
+  const loadHistory   = async (job_id: string) => {
     setShowHistory(false)
     try {
       const r = await researchAPI.status(job_id)
@@ -374,7 +428,7 @@ export default function App() {
   }
 
   // "Reports" in the nav opens the history drawer rather than a blank page
-  const handleSetMainView = (view) => {
+  const handleSetMainView = (view: MainView) => {
     if (view === 'reports') { setShowHistory(true); return }
     setMainView(view)
   }
@@ -961,6 +1015,7 @@ export default function App() {
                               report={jobStatus.report}
                               question={jobStatus.question}
                               onCiteClick={handleCiteClick}
+                              sourcesIndex={jobStatus.report.sources_index}
                               onFollowupClick={handleFollowupClick}
                             />
                           </motion.div>

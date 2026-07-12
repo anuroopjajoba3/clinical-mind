@@ -46,7 +46,7 @@ export default function EnterpriseSection() {
                 Case study
               </p>
               <p className="font-serif text-2xl font-bold text-ivory leading-snug">
-                Evidence synthesis dropped from 2 hours to under 4 minutes per case.
+                Evidence synthesis dropped from 2 hours to about 60 seconds per case.
               </p>
             </div>
             <div className="p-10 bg-cream flex flex-col justify-center">

@@ -13,14 +13,14 @@ const VALUES = [
     icon: FlaskConical,
     title: 'Evidence that keeps pace',
     desc: 'PubMed indexes thousands of new papers daily. ClinicalMind searches in real time — not from a static training snapshot.',
-    stat: '36M', statLabel: 'papers indexed',
+    stat: '35M', statLabel: 'papers indexed',
     accent: '#2563EB', lightBg: '#EFF6FF', border: '#BFDBFE',
   },
   {
     icon: Clock,
     title: 'Synthesis in minutes, not hours',
-    desc: 'The full eight-agent pipeline completes in under 4 minutes. Clinical teams previously spending hours on literature review reclaim that time.',
-    stat: '4 min', statLabel: 'avg. run time',
+    desc: 'The full eight-agent pipeline completes in about 60 seconds. Clinical teams previously spending hours on literature review reclaim that time.',
+    stat: '60 sec', statLabel: 'avg. run time',
     accent: '#059669', lightBg: '#ECFDF5', border: '#A7F3D0',
   },
   {

@@ -1,12 +1,15 @@
 """
 LangGraph multi-agent pipeline — Production version.
 
-5-agent pipeline:
-  0. PICO Agent         — extracts Population/Intervention/Comparison/Outcome + builds MeSH query
-  1. Search Agent       — parallel search: PubMed + ClinicalTrials.gov
-  2. Summarizer Agent   — Claude extracts structured data from each paper/trial
-  3. Contradiction Agent— Claude flags conflicting findings across papers
-  4. Synthesize Agent   — Claude produces the final structured clinical report
+8-agent pipeline (Claude API primary, OpenAI API fallback):
+  0. FHIR Context Agent — loads patient memory (conditions, meds, labs, allergies)
+  1. PICO Agent         — extracts Population/Intervention/Comparison/Outcome + builds MeSH query
+  2. Search Agent       — parallel search: PubMed + ClinicalTrials.gov
+  3. Summarizer Agent   — extracts structured data from each paper/trial
+  4. Contradiction Agent— flags conflicting findings across papers
+  5. Drug Interaction   — checks recommendations against current medications
+  6. Synthesize Agent   — produces the final structured clinical report
+  7. Follow-up Agent    — generates next-step clinical questions
 """
 
 import os
@@ -17,7 +20,6 @@ from typing import TypedDict, Optional
 
 from langgraph.graph import StateGraph, END
 from langchain_anthropic import ChatAnthropic
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from pubmed import get_clinical_papers
@@ -72,20 +74,32 @@ class ClinicalState(TypedDict):
 # ─── LLM ─────────────────────────────────────────────────────────────────────
 
 def get_llm(max_tokens: int = 8192):
-    google_key = os.getenv("GOOGLE_API_KEY")
-    if google_key:
-        return ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",
-            google_api_key=google_key,
-            max_output_tokens=max_tokens,
-            temperature=0.1,
-        )
-    return ChatAnthropic(
+    """
+    Primary model: Claude (Anthropic API).
+    Fallback: OpenAI API — attached automatically when OPENAI_API_KEY is set,
+    so transient Claude errors or rate limits don't fail the pipeline.
+    """
+    claude = ChatAnthropic(
         model="claude-sonnet-4-20250514",
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
         max_tokens=max_tokens,
         temperature=0.1,
     )
+
+    if os.getenv("OPENAI_API_KEY"):
+        try:
+            from langchain_openai import ChatOpenAI
+            openai_fallback = ChatOpenAI(
+                model="gpt-4o-mini",
+                api_key=os.getenv("OPENAI_API_KEY"),
+                max_tokens=max_tokens,
+                temperature=0.1,
+            )
+            return claude.with_fallbacks([openai_fallback])
+        except ImportError:
+            pass  # langchain-openai not installed — run Claude-only
+
+    return claude
 
 
 def _strip_json(raw: str) -> str:

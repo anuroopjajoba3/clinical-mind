@@ -23,7 +23,7 @@ export default function EvidenceSection() {
             </p>
             <h2 className="text-slate-900 leading-[1.06] max-w-[520px]"
               style={{ fontFamily: '"Playfair Display", serif', fontSize: 'clamp(2rem,4vw,2.75rem)', fontWeight: 800 }}>
-              36 million papers,{' '}
+              35 million papers,{' '}
               <em style={{ fontStyle: 'italic', color: '#1a56db' }}>ranked for one patient.</em>
             </h2>
           </div>
@@ -158,7 +158,7 @@ export default function EvidenceSection() {
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
             <p className="font-sans text-[11px] font-bold uppercase tracking-widest text-cyan-200 mb-3">Evidence at scale</p>
             <p className="font-sans text-[28px] font-extrabold text-white leading-tight max-w-[480px]">
-              36 million indexed papers, searched in real time.
+              35 million indexed papers, searched in real time.
             </p>
             <p className="font-sans text-[14px] text-slate-300 mt-3">Not a static training snapshot. Live results from PubMed and ClinicalTrials.gov.</p>
           </div>

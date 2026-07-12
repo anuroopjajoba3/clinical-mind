@@ -40,9 +40,9 @@ export default function HeroSection() {
             </h1>
 
             <p className="font-sans text-[17px] text-slate-500 leading-[1.7] max-w-[460px] mb-10">
-              Eight AI agents search 36 million papers, grade evidence, check
+              Eight AI agents search 35 million papers, grade evidence, check
               drug interactions, and write structured reports back to your EMR —
-              in under 4 minutes.
+              in about 60 seconds.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 items-start mb-10">

@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 
 const STATS = [
-  { value: '4 min',  label: 'Avg. synthesis time', sub: 'down from 2+ hours' },
+  { value: '60 sec',  label: 'Avg. synthesis time', sub: 'down from 2+ hours' },
   { value: '340',    label: 'Active clinicians' },
   { value: '100%',   label: 'FHIR write-back rate' },
 ]
@@ -69,7 +69,7 @@ export default function CaseStudySection() {
                 </span>
                 <p className="font-sans text-[16px] text-slate-700 leading-[1.7]">
                   "We went from spending 2+ hours on literature review per complex case
-                  to a structured, evidence-graded synthesis in under 4 minutes —
+                  to a structured, evidence-graded synthesis in about 60 seconds —
                   with the report automatically in the chart."
                 </p>
               </div>

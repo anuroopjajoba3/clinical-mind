@@ -6,7 +6,7 @@ import './index.css'
 
 const isAppRoute = window.location.pathname.startsWith('/app')
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     {isAppRoute ? <App /> : <LandingPage />}
   </React.StrictMode>
