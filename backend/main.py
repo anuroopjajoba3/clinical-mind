@@ -222,6 +222,7 @@ async def start_research(
     job = Job(
         question=body.question,
         user_id=current_user.id if current_user else None,
+        fhir_patient_id=body.fhir_patient_id,
         status="pending",
     )
     db.add(job)
@@ -301,6 +302,11 @@ async def stream_job(job_id: str):
 @app.get("/status/{job_id}", response_model=JobResponse)
 async def get_status(job_id: str, db: AsyncSession = Depends(get_db)):
     """Fallback polling endpoint (also checks Redis cache for speed)."""
+    # Reject malformed ids up front (avoids a DB type error → 500)
+    try:
+        uuid.UUID(job_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found.")
     # Try Redis first (fast)
     _ssl = {"ssl_cert_reqs": "none"} if REDIS_URL.startswith("rediss://") else {}
     r = aioredis.from_url(REDIS_URL, decode_responses=True, **_ssl)
@@ -472,8 +478,8 @@ async def start_compare(
 
     # Create two independent pipeline jobs
     uid = current_user.id if current_user else None
-    job_a = Job(question=body.question_a, user_id=uid, status="pending")
-    job_b = Job(question=body.question_b, user_id=uid, status="pending")
+    job_a = Job(question=body.question_a, user_id=uid, fhir_patient_id=body.fhir_patient_id, status="pending")
+    job_b = Job(question=body.question_b, user_id=uid, fhir_patient_id=body.fhir_patient_id, status="pending")
     db.add(job_a)
     db.add(job_b)
     await db.commit()
@@ -912,7 +918,10 @@ async def app_manifest():
 # ════════════════════════════════════════════════════════════════════════════
 
 @app.delete("/patients/purge-invalid")
-async def purge_invalid_patients(db: AsyncSession = Depends(get_db)):
+async def purge_invalid_patients(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Delete any patient rows that have no MRN (junk from bad sync runs)."""
     from sqlalchemy import delete as sql_delete
     from database import Patient as PatientModel, PatientEntity as PatientEntityModel

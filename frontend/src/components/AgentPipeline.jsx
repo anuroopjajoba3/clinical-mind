@@ -134,7 +134,7 @@ function AgentRow({ agent, status, index, compact }) {
           color: isRunning ? '#0E7490' : isComplete ? '#065F46' : isError ? '#DC2626' : '#334155',
         }}>{agent.label}</p>
         <p style={{ fontFamily: 'Inter', fontSize: 11, marginTop: 2, lineHeight: 1, display: 'flex', alignItems: 'center', gap: 4,
-          color: isRunning ? '#0E7490' : isComplete ? '#6EE7B7' : '#94A3B8',
+          color: isRunning ? '#0E7490' : isComplete ? '#059669' : '#94A3B8',
         }}>
           {isRunning && (
             <>

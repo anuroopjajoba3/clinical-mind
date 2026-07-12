@@ -25,11 +25,11 @@ const DEMO_CARDS = [
   {
     hook:      'patient-view',
     hookLabel: 'patient-view hook',
-    summary:   'ClinicalMed: 3 prior evidence queries for this patient',
+    summary:   'ClinicalMind: 3 prior evidence queries for this patient',
     indicator: 'info',
     detail:    'Most recent query (May 18, 2026):\nWhat is the evidence for SGLT2 inhibitors in CKD stage 3?\n\nTop recommendations:\n• Initiate SGLT2 inhibitor (empagliflozin 10 mg) — eGFR ≥20 (1A, 94%)\n• Monitor eGFR and potassium 4 weeks after initiation (1B, 88%)\n• Target BP <130/80 with ACEi/ARB if tolerated (1A, 91%)',
     links: [
-      { label: 'Open in ClinicalMed', url: '#' },
+      { label: 'Open in ClinicalMind', url: '#' },
       { label: 'View all insights',    url: '#' },
     ],
   },
@@ -38,7 +38,7 @@ const DEMO_CARDS = [
     hookLabel: 'patient-view hook',
     summary:   'High-confidence recommendation from 38 days ago — consider review',
     indicator: 'warning',
-    detail:    'ClinicalMed previously identified high-confidence recommendations for this patient (Apr 15, 2026). Clinical evidence may have been updated since then.',
+    detail:    'ClinicalMind previously identified high-confidence recommendations for this patient (Apr 15, 2026). Clinical evidence may have been updated since then.',
     links: [
       { label: 'Review recommendations', url: '#' },
     ],
@@ -48,7 +48,7 @@ const DEMO_CARDS = [
     hookLabel: 'order-sign hook',
     summary:   'Major drug interaction: Clarithromycin + Atorvastatin',
     indicator: 'critical',
-    detail:    'Interaction detected by ClinicalMed\n\nClarithromycin is a strong CYP3A4 inhibitor. Co-administration with atorvastatin significantly increases statin plasma levels, raising the risk of myopathy and rhabdomyolysis.\n\nMechanism: CYP3A4 inhibition → ↑ atorvastatin AUC up to 5-fold',
+    detail:    'Interaction detected by ClinicalMind\n\nClarithromycin is a strong CYP3A4 inhibitor. Co-administration with atorvastatin significantly increases statin plasma levels, raising the risk of myopathy and rhabdomyolysis.\n\nMechanism: CYP3A4 inhibition → ↑ atorvastatin AUC up to 5-fold',
     links: [
       { label: 'Search evidence for this combination', url: '#' },
     ],
@@ -75,7 +75,7 @@ function CDSCard({ card, index }) {
           <span className={`inline-flex items-center gap-1 text-xs font-mono font-semibold px-2 py-0.5 rounded border ${style.badge}`}>
             {card.hookLabel}
           </span>
-          <span className="text-xs text-slate-400">ClinicalMed</span>
+          <span className="text-xs text-slate-400">ClinicalMind</span>
         </div>
 
         {/* Summary row */}

@@ -133,7 +133,10 @@ export default function PatientDashboard({ patient, onOpenInsight, onSearchEvide
   const conditions  = detail?.conditions  || []
   const medications = detail?.medications || []
   const labs        = detail?.labs        || []
-  const allergies   = detail?.allergies   || patient.allergies || []
+  // API returns allergies as objects ({display, status, ...}) — normalise to strings
+  const allergies   = (detail?.allergies || patient.allergies || [])
+    .map(al => (typeof al === 'string' ? al : al?.display))
+    .filter(Boolean)
   const synced      = timeAgo(detail?.synced_at)
 
   const genderDisplay = patient.gender
@@ -159,7 +162,7 @@ export default function PatientDashboard({ patient, onOpenInsight, onSearchEvide
                 a ? `${a} years old` : null,
                 genderDisplay,
                 patient.birth_date ? `DOB: ${patient.birth_date}` : null,
-                patient.mrn ? `MRN: MRN-${patient.mrn}` : null,
+                patient.mrn ? `MRN: ${patient.mrn}` : null,
               ].filter(Boolean).join('  •  ')}
             </p>
             {synced && (
@@ -229,10 +232,10 @@ export default function PatientDashboard({ patient, onOpenInsight, onSearchEvide
                       <div>
                         <p className="text-sm font-medium text-slate-900">{c.display || c.name}</p>
                         {c.code && (
-                          <p className="text-xs text-slate-400 mt-0.5">ICD-10: {c.code}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">Code: {c.code}</p>
                         )}
-                        {c.onset && (
-                          <p className="text-xs text-slate-400">Onset: {c.onset}</p>
+                        {(c.onset || c.date) && (
+                          <p className="text-xs text-slate-400">Onset: {c.onset || c.date}</p>
                         )}
                       </div>
                       {c.status && <StatusBadge status={c.status} />}
@@ -250,14 +253,14 @@ export default function PatientDashboard({ patient, onOpenInsight, onSearchEvide
               ) : (
                 <div className="space-y-4">
                   {medications.slice(0, 6).map((m, i) => (
-                    <div key={i}>
-                      <p className="text-sm font-medium text-slate-900">{m.name}</p>
-                      {m.dose && (
-                        <p className="text-xs text-slate-500 mt-0.5">{m.dose}</p>
-                      )}
-                      {m.prescriber && (
-                        <p className="text-xs text-slate-400">Prescribed by {m.prescriber}</p>
-                      )}
+                    <div key={i} className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{m.display || m.name}</p>
+                        {(m.dose || m.date) && (
+                          <p className="text-xs text-slate-400 mt-0.5">{m.dose || `Started ${m.date}`}</p>
+                        )}
+                      </div>
+                      {m.status && <StatusBadge status={m.status} />}
                     </div>
                   ))}
                 </div>
@@ -276,7 +279,7 @@ export default function PatientDashboard({ patient, onOpenInsight, onSearchEvide
                 {labs.slice(0, 6).map((lab, i) => (
                   <div key={i} className="flex items-center gap-3 py-1 border-b border-slate-100 last:border-0">
                     <TrendIcon direction={lab.direction} />
-                    <span className="text-sm text-slate-700 flex-1">{lab.name}</span>
+                    <span className="text-sm text-slate-700 flex-1">{lab.display || lab.name}</span>
                     <span className="text-sm font-semibold text-slate-900 tabular-nums">{lab.value}</span>
                     {lab.date && (
                       <span className="text-xs text-slate-400">{formatDate(lab.date)}</span>

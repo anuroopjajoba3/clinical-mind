@@ -580,6 +580,7 @@ async def contradiction_agent(state: ClinicalState) -> ClinicalState:
     # Try Meditron first (30s timeout), fall back to Claude
     meditron = _get_meditron()
     raw = None
+    used_meditron = False
     if meditron:
         try:
             print("Contradiction agent: trying Meditron (local medical LLM, 30s timeout)")
@@ -588,6 +589,7 @@ async def contradiction_agent(state: ClinicalState) -> ClinicalState:
                 timeout=30.0,
             )
             raw = response.content
+            used_meditron = True
             print("Contradiction agent: Meditron responded")
         except asyncio.TimeoutError:
             print("Contradiction agent: Meditron timed out, falling back to Claude")
@@ -597,6 +599,15 @@ async def contradiction_agent(state: ClinicalState) -> ClinicalState:
             raw = None
 
     try:
+        # If Meditron replied but with unparseable JSON, fall back to Claude too
+        if raw is not None:
+            try:
+                json.loads(_strip_json(raw))
+            except json.JSONDecodeError:
+                print("Contradiction agent: Meditron output unparseable, falling back to Claude")
+                raw = None
+                used_meditron = False
+
         if raw is None:
             print("Contradiction agent: using Claude")
             llm = get_llm(max_tokens=1024)
@@ -609,7 +620,7 @@ async def contradiction_agent(state: ClinicalState) -> ClinicalState:
         result = json.loads(_strip_json(raw))
         state["contradictions"] = result.get("contradictions", [])
         state.setdefault("report", {})["consistency_note"] = result.get("consistency_note", "")
-        state.setdefault("report", {})["contradiction_model"] = "meditron" if (meditron and "Meditron responded" in str(raw)) else "claude"
+        state.setdefault("report", {})["contradiction_model"] = "meditron" if used_meditron else "claude"
 
     except Exception as e:
         print(f"Contradiction agent error: {e}")

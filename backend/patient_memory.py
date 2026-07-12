@@ -401,6 +401,36 @@ async def get_patient_summary(fhir_patient_id: str, db: AsyncSession) -> dict | 
     }
 
 
+async def get_patient_context(db: AsyncSession, fhir_patient_id: str) -> dict | None:
+    """
+    Compact context for the discharge risk agent.
+    Returns {"entities": [{entity_type, display, value, status, date}, ...]}
+    or None if the patient has not been synced locally.
+    """
+    result = await db.execute(
+        select(Patient)
+        .where(Patient.fhir_id == fhir_patient_id)
+        .options(selectinload(Patient.entities))
+    )
+    patient = result.scalar_one_or_none()
+    if not patient:
+        return None
+    return {
+        "fhir_id": patient.fhir_id,
+        "full_name": patient.full_name,
+        "entities": [
+            {
+                "entity_type": e.entity_type,
+                "display":     e.display,
+                "value":       e.value,
+                "status":      e.status,
+                "date":        e.onset_date,
+            }
+            for e in patient.entities
+        ],
+    }
+
+
 async def list_patients(db: AsyncSession) -> list[dict]:
     """
     Returns all synced patients with a compact summary (for the patient list screen).
@@ -433,6 +463,9 @@ async def list_patients(db: AsyncSession) -> list[dict]:
             "mrn":              p.mrn,
             "active_conditions": active_conditions,
             "active_medications": active_meds,
+            "allergies": [
+                e.display for e in ents if e.entity_type == "allergy" and e.display
+            ][:3],
             "last_encounter":   last_encounter,
             "entity_counts": {
                 "conditions":  sum(1 for e in ents if e.entity_type == "condition"),

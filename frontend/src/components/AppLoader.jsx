@@ -24,7 +24,7 @@ export default function AppLoader() {
           <span className="font-sans text-[22px] font-extrabold text-[#67C5D5]">CM</span>
         </motion.div>
         <div className="text-center">
-          <p className="font-sans text-[18px] font-bold text-white tracking-tight">ClinicalMed</p>
+          <p className="font-sans text-[18px] font-bold text-white tracking-tight">ClinicalMind</p>
           <p className="font-sans text-[12px] text-white/30 mt-1">Loading your workspace…</p>
         </div>
       </motion.div>

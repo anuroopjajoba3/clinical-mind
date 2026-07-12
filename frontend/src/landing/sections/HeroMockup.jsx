@@ -35,7 +35,7 @@ export default function HeroMockup() {
             <span className="w-2.5 h-2.5 rounded-full bg-[#28C840]" />
           </div>
           <span className="font-sans text-xs text-[#888888]">
-            ClinicalMed — Sarah K. · MRN-00421 · FHIR R4
+            ClinicalMind — Sarah K. · MRN-00421 · FHIR R4
           </span>
         </div>
 

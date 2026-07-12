@@ -190,6 +190,7 @@ export default function App() {
   const [highlightedSource, setHighlightedSource] = useState(null)
   const highlightTimerRef = useRef(null)
   const streamRef    = useRef(null)
+  const pollRef      = useRef(null)
   const searchBarRef = useRef(null)
   const [compareMode, setCompareMode]     = useState(false)
   const [questionB, setQuestionB]         = useState('')
@@ -215,6 +216,7 @@ export default function App() {
 
   const stopStream = () => {
     if (streamRef.current) { streamRef.current.close(); streamRef.current = null }
+    if (pollRef.current)   { clearInterval(pollRef.current); pollRef.current = null }
   }
 
   const handleJobData = useCallback((data) => {
@@ -296,12 +298,17 @@ export default function App() {
         agent_status: Object.fromEntries(ALL_AGENTS.map(a => [a, 'idle'])),
       })
       streamRef.current = createJobStream(job_id, handleJobData, () => {
-        const poll = setInterval(async () => {
+        if (pollRef.current) clearInterval(pollRef.current)
+        pollRef.current = setInterval(async () => {
           try {
             const r = await researchAPI.status(job_id)
             handleJobData(r.data)
-            if (['complete', 'error'].includes(r.data.status)) clearInterval(poll)
-          } catch { clearInterval(poll) }
+            if (['complete', 'error'].includes(r.data.status)) {
+              clearInterval(pollRef.current); pollRef.current = null
+            }
+          } catch {
+            clearInterval(pollRef.current); pollRef.current = null
+          }
         }, 2000)
       })
     } catch (err) {
@@ -356,7 +363,20 @@ export default function App() {
   }
   const loadHistory   = async (job_id) => {
     setShowHistory(false)
-    try { const r = await researchAPI.status(job_id); setJobStatus(r.data); setQuestion(r.data.question) } catch {}
+    try {
+      const r = await researchAPI.status(job_id)
+      setCompareStatus(null)
+      setError(null)
+      setJobStatus(r.data)
+      setQuestion(r.data.question)
+      setMainView('search')   // report only renders in the search view
+    } catch {}
+  }
+
+  // "Reports" in the nav opens the history drawer rather than a blank page
+  const handleSetMainView = (view) => {
+    if (view === 'reports') { setShowHistory(true); return }
+    setMainView(view)
   }
 
   const hasFullReport      = Boolean(jobStatus?.report && Object.keys(jobStatus.report).length > 0)
@@ -380,7 +400,7 @@ export default function App() {
         }}
         onNewSearch={() => { handleReset(); setMainView('search') }}
         mainView={mainView}
-        setMainView={setMainView}
+        setMainView={handleSetMainView}
         user={user}
         onLogout={handleLogout}
       />
@@ -957,7 +977,7 @@ export default function App() {
                 {/* Footer */}
                 <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${T.border}` }}>
                   <p style={{ fontFamily: 'Inter', fontSize: 11, color: T.muted }}>
-                    ClinicalMed · FastAPI · LangGraph · FHIR R4 · Claude
+                    ClinicalMind · FastAPI · LangGraph · FHIR R4 · Claude
                   </p>
                   <p style={{ fontFamily: 'Inter', fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
                     For research use only · Not a substitute for clinical judgment

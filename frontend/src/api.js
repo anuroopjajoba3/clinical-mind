@@ -65,7 +65,7 @@ export function formatApiError(err) {
   const detail = data?.detail
 
   if (status === 404) {
-    return 'API endpoint not found. Ensure the ClinicalMed backend is running on port 8000.'
+    return 'API endpoint not found. Ensure the ClinicalMind backend is running (default port 8001).'
   }
   if (typeof detail === 'string') return detail
   if (Array.isArray(detail)) {
